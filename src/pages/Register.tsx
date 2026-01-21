@@ -15,7 +15,7 @@ export default function Register() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+      navigate('/app/dashboard', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -28,7 +28,7 @@ export default function Register() {
       await register(name, email, password)
       // Navigate after state has been updated
       setTimeout(() => {
-        navigate('/dashboard', { replace: true })
+        navigate('/app/dashboard', { replace: true })
       }, 100)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register. Please try again.')

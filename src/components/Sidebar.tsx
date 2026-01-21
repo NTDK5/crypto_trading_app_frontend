@@ -1,17 +1,23 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, TrendingUp, Wallet, BarChart3, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const navigation = [
-  { name: 'Trade', href: '/trade', icon: TrendingUp },
-  { name: 'Market', href: '/market', icon: BarChart3 },
-  { name: 'Wallet', href: '/wallet', icon: Wallet },
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Trade', href: '/app/trade', icon: TrendingUp },
+  { name: 'Market', href: '/app/market', icon: BarChart3 },
+  { name: 'Wallet', href: '/app/wallet', icon: Wallet },
+  { name: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard },
 ]
 
 export default function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { logout } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/', { replace: true })
+  }
 
   return (
     <div className="w-64 bg-dark-800 border-r border-dark-700 flex flex-col">
@@ -43,7 +49,7 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-dark-700">
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="flex items-center space-x-3 w-full px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
         >
           <LogOut className="w-5 h-5" />

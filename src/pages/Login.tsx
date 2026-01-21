@@ -14,7 +14,7 @@ export default function Login() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+      navigate('/app/dashboard', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -27,7 +27,7 @@ export default function Login() {
       await login(email, password)
       // Navigate after state has been updated
       setTimeout(() => {
-        navigate('/dashboard', { replace: true })
+        navigate('/app/dashboard', { replace: true })
       }, 100)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to login. Please try again.')
