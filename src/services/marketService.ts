@@ -11,18 +11,18 @@ export interface MarketData {
 
 export const marketService = {
   async getAllMarketData(): Promise<MarketData[]> {
-    const response = await api.get<MarketData[]>('/market')
-    return response.data
+    const response = await api.get<{ success: boolean; data: MarketData[] }>('/market')
+    return response.data.data || []
   },
 
   async getPrice(asset: string): Promise<number> {
-    const response = await api.get<{ price: number }>(`/market/${asset}/price`)
-    return response.data.price
+    const response = await api.get<{ success: boolean; data: { price: number } }>(`/market/${asset}/price`)
+    return response.data.data.price
   },
 
   async getMarketData(asset: string): Promise<MarketData> {
-    const response = await api.get<MarketData>(`/market/${asset}/data`)
-    return response.data
+    const response = await api.get<{ success: boolean; data: MarketData }>(`/market/${asset}/data`)
+    return response.data.data
   },
 }
 

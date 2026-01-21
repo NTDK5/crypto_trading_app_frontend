@@ -14,7 +14,11 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken')
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      // Remove any extra quotes or whitespace that might cause JWT malformed errors
+      const cleanToken = token.trim().replace(/^["']|["']$/g, '')
+      if (cleanToken) {
+        config.headers.Authorization = `Bearer ${cleanToken}`
+      }
     }
     return config
   },
@@ -35,12 +39,17 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken')
         if (refreshToken) {
+          // Clean the refresh token as well
+          const cleanRefreshToken = refreshToken.trim().replace(/^["']|["']$/g, '')
           const response = await axios.post(`${API_URL}/auth/refresh`, {
-            refreshToken,
+            refreshToken: cleanRefreshToken,
           })
 
-          const { accessToken } = response.data
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data
           localStorage.setItem('accessToken', accessToken)
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken)
+          }
           originalRequest.headers.Authorization = `Bearer ${accessToken}`
 
           return api(originalRequest)

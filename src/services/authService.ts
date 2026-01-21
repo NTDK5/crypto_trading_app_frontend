@@ -24,20 +24,20 @@ export interface AuthResponse {
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', credentials)
-    return response.data
+    const response = await api.post<{ success: boolean; data: AuthResponse }>('/auth/login', credentials)
+    return response.data.data
   },
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/register', data)
-    return response.data
+    const response = await api.post<{ success: boolean; data: AuthResponse }>('/auth/register', data)
+    return response.data.data
   },
 
-  async refreshToken(refreshToken: string): Promise<{ accessToken: string }> {
-    const response = await api.post<{ accessToken: string }>('/auth/refresh', {
+  async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    const response = await api.post<{ success: boolean; data: { accessToken: string; refreshToken: string } }>('/auth/refresh', {
       refreshToken,
     })
-    return response.data
+    return response.data.data
   },
 
   async logout(): Promise<void> {

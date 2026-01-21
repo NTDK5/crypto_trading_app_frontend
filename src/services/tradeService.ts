@@ -22,18 +22,18 @@ export interface CreateTradeData {
 
 export const tradeService = {
   async createTrade(data: CreateTradeData): Promise<Trade> {
-    const response = await api.post<Trade>('/trades', data)
-    return response.data
+    const response = await api.post<{ success: boolean; data: Trade }>('/trades', data)
+    return response.data.data
   },
 
   async getUserTrades(): Promise<Trade[]> {
-    const response = await api.get<Trade[]>('/trades')
-    return response.data
+    const response = await api.get<{ success: boolean; data: Trade[] }>('/trades')
+    return response.data.data || []
   },
 
   async getTradeById(tradeId: string): Promise<Trade> {
-    const response = await api.get<Trade>(`/trades/${tradeId}`)
-    return response.data
+    const response = await api.get<{ success: boolean; data: Trade }>(`/trades/${tradeId}`)
+    return response.data.data
   },
 }
 

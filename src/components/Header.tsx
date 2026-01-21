@@ -11,8 +11,10 @@ export default function Header() {
     const fetchBalance = async () => {
       try {
         const balances = await walletService.getBalances()
-        const usdtBalance = balances.find((b) => b.asset === 'USDT') || balances[0]
-        setBalance(usdtBalance)
+        if (Array.isArray(balances)) {
+          const usdtBalance = balances.find((b) => b.asset === 'USDT') || balances[0]
+          setBalance(usdtBalance || null)
+        }
       } catch (error) {
         console.error('Failed to fetch balance:', error)
       }
@@ -30,10 +32,12 @@ export default function Header() {
           <div>
             <p className="text-sm text-gray-400">Available Balance</p>
             <p className="text-2xl font-bold text-white">
-              {balance ? `${balance.available.toFixed(2)} ${balance.asset}` : 'Loading...'}
+              {balance && typeof balance.available === 'number' 
+                ? `${balance.available.toFixed(2)} ${balance.asset}` 
+                : 'Loading...'}
             </p>
           </div>
-          {balance && balance.locked > 0 && (
+          {balance && balance.locked && balance.locked > 0 && (
             <div>
               <p className="text-sm text-gray-400">Locked</p>
               <p className="text-lg font-semibold text-yellow-500">

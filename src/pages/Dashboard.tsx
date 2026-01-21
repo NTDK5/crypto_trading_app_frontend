@@ -24,9 +24,9 @@ export default function Dashboard() {
         walletService.getBalances(),
         marketService.getAllMarketData(),
       ])
-      setTrades(tradesData)
-      setBalances(balancesData)
-      setMarketData(marketDataData.slice(0, 5)) // Top 5 assets
+      setTrades(Array.isArray(tradesData) ? tradesData : [])
+      setBalances(Array.isArray(balancesData) ? balancesData : [])
+      setMarketData(Array.isArray(marketDataData) ? marketDataData.slice(0, 5) : []) // Top 5 assets
       setLoading(false)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
@@ -34,8 +34,8 @@ export default function Dashboard() {
     }
   }
 
-  const totalBalance = balances.reduce((sum, b) => sum + b.balance, 0)
-  const lockedBalance = balances.reduce((sum, b) => sum + b.locked, 0)
+  const totalBalance = Array.isArray(balances) ? balances.reduce((sum, b) => sum + b.balance, 0) : 0
+  const lockedBalance = Array.isArray(balances) ? balances.reduce((sum, b) => sum + b.locked, 0) : 0
   const availableBalance = totalBalance - lockedBalance
 
   const wonTrades = trades.filter((t) => t.status === 'WON').length

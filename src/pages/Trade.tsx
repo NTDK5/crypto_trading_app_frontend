@@ -46,8 +46,10 @@ export default function Trade() {
   const fetchBalance = async () => {
     try {
       const balances = await walletService.getBalances()
-      const usdtBalance = balances.find((b) => b.asset === 'USDT')
-      setBalance(usdtBalance?.available || 0)
+      if (Array.isArray(balances)) {
+        const usdtBalance = balances.find((b) => b.asset === 'USDT')
+        setBalance(usdtBalance?.available || 0)
+      }
     } catch (error) {
       console.error('Failed to fetch balance:', error)
     }
