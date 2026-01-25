@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { marketService, MarketData } from '../services/marketService'
 import TradingChart from '../components/TradingChart'
+import MarketTable from '../components/MarketTable'
+import TopGainers from '../components/TopGainers'
+import TopLosers from '../components/TopLosers'
+import TrendingNow from '../components/TrendingNow'
 
 export default function Market() {
   const [marketData, setMarketData] = useState<MarketData[]>([])
@@ -82,7 +86,12 @@ export default function Market() {
           <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
             Market Overview
           </h1>
-          <p className="text-gray-400 text-lg">Real-time cryptocurrency prices and market data</p>
+          <p className="text-gray-400 text-lg">Real-time cryptocurrency market data and analysis</p>
+        </div>
+
+        {/* Market Table */}
+        <div className="mb-8">
+          <MarketTable />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -219,6 +228,17 @@ export default function Market() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Top Gainers and Losers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          <TopGainers />
+          <TopLosers />
+        </div>
+
+        {/* Trending Now */}
+        <div className="mt-8">
+          <TrendingNow />
         </div>
       </div>
     </div>
