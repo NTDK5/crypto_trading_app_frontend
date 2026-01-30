@@ -5,6 +5,8 @@ import { walletService, WalletBalance } from '../services/walletService'
 import { marketService, MarketData } from '../services/marketService'
 import {MarketCard} from "../components/MarketCard"
 import  DashboardHero  from '../components/DashboardHero'
+import { useAuth } from '../contexts/AuthContext'
+import FundPasswordModal from '../components/FundPasswordModal'
 
 
 const actionIcons: Record<string, JSX.Element> = {
@@ -15,16 +17,25 @@ const actionIcons: Record<string, JSX.Element> = {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth()
   const [trades, setTrades] = useState<Trade[]>([])
   const [balances, setBalances] = useState<WalletBalance[]>([])
   const [marketData, setMarketData] = useState<MarketData[]>([])
   const [loading, setLoading] = useState(true)
+  const [showFundPasswordModal, setShowFundPasswordModal] = useState(false)
 
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 10000)
     return () => clearInterval(interval)
   }, [])
+
+  // Show fund password modal if user hasn't set it
+  useEffect(() => {
+    if (user && !user.isFundPasswordSet) {
+      setShowFundPasswordModal(true)
+    }
+  }, [user])
 
   const fetchData = async () => {
     try {
@@ -186,6 +197,21 @@ export default function Dashboard() {
 
         </div>
       </div>
+
+      {/* Fund Password Modal */}
+      <FundPasswordModal
+        isOpen={showFundPasswordModal}
+        onClose={() => {
+          // Don't allow closing if fund password is not set
+          if (!user?.isFundPasswordSet) {
+            return
+          }
+          setShowFundPasswordModal(false)
+        }}
+        onSuccess={() => {
+          setShowFundPasswordModal(false)
+        }}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, TrendingUp, Wallet, BarChart3, LogOut, User } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Wallet, BarChart3, LogOut, User, Settings } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useState, useEffect } from 'react'
 import { walletService, WalletBalance } from '../services/walletService'
@@ -119,6 +119,19 @@ export default function AppHeader() {
               </div>
             </div>
 
+            {/* Settings Button */}
+            <Link
+              to="/app/settings"
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                location.pathname === '/app/settings'
+                  ? 'text-cyan-400 bg-cyan-500/10'
+                  : 'text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10'
+              }`}
+              title="Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </Link>
+
             {/* Logout Button */}
             <button
               onClick={handleLogout}
@@ -155,6 +168,8 @@ export default function AppHeader() {
     </header>
   )
 }
+
+
 
 
 

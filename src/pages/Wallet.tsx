@@ -1,17 +1,36 @@
 import { useState, useEffect } from 'react'
-import { Plus, Minus, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle, Wallet as WalletIcon } from 'lucide-react'
-import { walletService, WalletBalance, Transaction } from '../services/walletService'
+import { ArrowDownLeft, ArrowUpRight, ArrowRight, RefreshCw, Settings, Eye, EyeOff, MessageCircle, ChevronRight, Repeat, User } from 'lucide-react'
+import { walletService, WalletBalance } from '../services/walletService'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function Wallet() {
+  const { user } = useAuth()
   const [balances, setBalances] = useState<WalletBalance[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(false)
   const [showDeposit, setShowDeposit] = useState(false)
   const [showWithdraw, setShowWithdraw] = useState(false)
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [showConvert, setShowConvert] = useState(false)
   const [depositAmount, setDepositAmount] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawAddress, setWithdrawAddress] = useState('')
+  const [withdrawFundPassword, setWithdrawFundPassword] = useState('')
+  const [showWithdrawFundPassword, setShowWithdrawFundPassword] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [balanceVisible, setBalanceVisible] = useState(true)
+  
+  // Calculate totals
+  const totalAssetsUSD = balances.reduce((sum, b) => sum + (b.balance || 0), 0)
+  const totalAssetsBTC = totalAssetsUSD / 50000 // Approximate BTC price
+  const availableBalance = balances.reduce((sum, b) => sum + (b.available || 0), 0)
+  const inUseBalance = balances.reduce((sum, b) => sum + (b.locked || 0), 0)
+  
+  // Calculate today's P&L (placeholder - you can replace with actual calculation)
+  const todayPnL = 0.04
+  const todayPnLPercent = 0.02
+  
+  // Generate user ID from user.id (first 8 characters)
+  const userId = user?.id ? user.id.substring(0, 8).toUpperCase() : 'N/A'
 
   useEffect(() => {
     fetchData()
@@ -19,12 +38,8 @@ export default function Wallet() {
 
   const fetchData = async () => {
     try {
-      const [balancesData, transactionsData] = await Promise.all([
-        walletService.getBalances(),
-        walletService.getTransactions(),
-      ])
+      const balancesData = await walletService.getBalances()
       setBalances(balancesData)
-      setTransactions(transactionsData)
     } catch (error) {
       console.error('Failed to fetch wallet data:', error)
     }
@@ -59,15 +74,23 @@ export default function Wallet() {
     setLoading(true)
     setMessage(null)
 
+    if (!withdrawFundPassword) {
+      setMessage({ type: 'error', text: 'Fund password is required for withdrawals' })
+      setLoading(false)
+      return
+    }
+
     try {
       await walletService.withdraw({
         asset: 'USDT',
         amount: parseFloat(withdrawAmount),
         address: withdrawAddress,
+        fundPassword: withdrawFundPassword,
       })
       setMessage({ type: 'success', text: 'Withdrawal request submitted successfully!' })
       setWithdrawAmount('')
       setWithdrawAddress('')
+      setWithdrawFundPassword('')
       setShowWithdraw(false)
       fetchData()
     } catch (error: any) {
@@ -80,57 +103,40 @@ export default function Wallet() {
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-      case 'COMPLETED':
-        return <CheckCircle className="w-5 h-5 text-green-400" />
-      case 'REJECTED':
-      case 'FAILED':
-        return <XCircle className="w-5 h-5 text-red-400" />
-      default:
-        return <Clock className="w-5 h-5 text-yellow-400" />
-    }
-  }
-
-  const getTypeIcon = (type: string) => {
-    if (type.includes('DEPOSIT')) {
-      return <ArrowDownLeft className="w-5 h-5 text-green-400" />
-    } else if (type.includes('WITHDRAW')) {
-      return <ArrowUpRight className="w-5 h-5 text-red-400" />
-    } else if (type.includes('PROFIT')) {
-      return <ArrowDownLeft className="w-5 h-5 text-green-400" />
-    } else {
-      return <ArrowUpRight className="w-5 h-5 text-yellow-400" />
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black py-8 px-6">
+    <div className="min-h-screen bg-gray-900 py-8 px-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              Wallet
-            </h1>
-            <p className="text-gray-400 text-lg">Manage your funds and transactions</p>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+                Assets
+              </h1>
+              <p className="text-gray-400 text-lg">Manage your wallet, deposits, and withdrawals</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button className="p-2 text-gray-400 hover:text-white transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setBalanceVisible(!balanceVisible)}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <Eye className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => setShowDeposit(true)}
-              className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Deposit</span>
-            </button>
-            <button
-              onClick={() => setShowWithdraw(true)}
-              className="flex items-center space-x-2 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white px-6 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg shadow-red-500/30 hover:shadow-red-500/50 hover:scale-105"
-            >
-              <Minus className="w-5 h-5" />
-              <span>Withdraw</span>
-            </button>
+          
+          {/* User Profile */}
+          <div className="flex items-center space-x-3 mb-8">
+            <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-white font-medium">{user?.name || 'User'}</p>
+              <p className="text-gray-400 text-sm">{userId}</p>
+            </div>
           </div>
         </div>
 
@@ -146,112 +152,141 @@ export default function Wallet() {
           </div>
         )}
 
-        {/* Balance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {balances.map((balance) => (
-            <div
-              key={balance.asset}
-              className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-cyan-500/20 hover:-translate-y-1"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-blue-500/0 group-hover:from-cyan-500/10 group-hover:to-blue-500/10 rounded-2xl transition-all duration-300"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="p-3 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl">
-                    <WalletIcon className="w-6 h-6 text-cyan-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white">{balance.asset}</h3>
+        {/* Assets Overview */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-white mb-6">Assets</h2>
+          
+          <div className="bg-gray-800/50 rounded-xl p-6 mb-6">
+            <div className="mb-6">
+              <p className="text-gray-400 text-sm mb-2">Total Assets</p>
+              <p className="text-4xl font-bold text-white mb-1">
+                {balanceVisible ? `${totalAssetsUSD.toFixed(2)} USD` : '••••••'}
+              </p>
+              <p className="text-gray-400 text-sm">
+                ≈ {balanceVisible ? totalAssetsBTC.toFixed(8) : '••••••'} BTC
+              </p>
+            </div>
+            
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2 text-green-400 cursor-pointer hover:text-green-300">
+                <span className="text-lg font-semibold">
+                  {balanceVisible ? `+${todayPnL.toFixed(2)} USD (${todayPnLPercent > 0 ? '+' : ''}${todayPnLPercent.toFixed(2)}%)` : '••••••'}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+              <div className="text-sm text-gray-400">Today's P&L</div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-gray-400 text-sm mb-2">Available</p>
+                <p className="text-2xl font-bold text-white mb-1">
+                  {balanceVisible ? `${availableBalance.toFixed(2)} USD` : '••••••'}
+                </p>
+                <p className="text-gray-500 text-xs">Can trade & withdraw</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm mb-2">In Use</p>
+                  <p className="text-2xl font-bold text-white mb-1">
+                    {balanceVisible ? `${inUseBalance.toFixed(2)} USD` : '••••••'}
+                  </p>
+                  <p className="text-gray-500 text-xs">USD balance from deposits</p>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">Available</p>
-                    <p className="text-3xl font-bold text-white">
-                      {balance.available.toFixed(2)}
-                    </p>
-                  </div>
-                  {balance.locked > 0 && (
-                    <div className="pt-4 border-t border-gray-700/50">
-                      <p className="text-sm text-gray-400 mb-1">Locked</p>
-                      <p className="text-xl font-semibold text-yellow-400">
-                        {balance.locked.toFixed(2)}
-                      </p>
-                    </div>
-                  )}
-                  <div className="pt-4 border-t border-gray-700/50">
-                    <p className="text-sm text-gray-400 mb-1">Total</p>
-                    <p className="text-lg font-medium text-gray-300">
-                      {balance.balance.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
+                <ArrowRight className="w-5 h-5 text-gray-400" />
               </div>
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* Transactions */}
-        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
-            <div className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-blue-400 rounded-full mr-3"></div>
-            Transaction History
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700/50">
-                  <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">Type</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">Asset</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">Amount</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">Status</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-gray-400">
-                      No transactions found
-                    </td>
-                  </tr>
-                ) : (
-                  transactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className="border-b border-gray-700/50 hover:bg-gray-800/30 transition-colors"
-                    >
-                      <td className="py-4 px-4">
-                        <div className="flex items-center space-x-2">
-                          {getTypeIcon(tx.type)}
-                          <span className="text-white">{tx.type.replace(/_/g, ' ')}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-white font-medium">{tx.asset}</td>
-                      <td
-                        className={`py-4 px-4 font-semibold ${
-                          tx.type.includes('DEPOSIT') || tx.type.includes('PROFIT')
-                            ? 'text-green-400'
-                            : tx.type.includes('WITHDRAW') || tx.type.includes('LOSS')
-                            ? 'text-red-400'
-                            : 'text-white'
-                        }`}
-                      >
-                        {tx.type.includes('WITHDRAW') || tx.type.includes('LOSS') || tx.type.includes('INVESTMENT') ? '-' : '+'}
-                        {Math.abs(tx.amount).toFixed(2)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center space-x-2">
-                          {getStatusIcon(tx.status)}
-                          <span className="text-gray-300">{tx.status}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-400 text-sm">
-                        {new Date(tx.createdAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        {/* Action Buttons */}
+        <div className="flex justify-center items-center space-x-6 mb-8">
+          <button
+            onClick={() => setShowDeposit(true)}
+            className="flex flex-col items-center space-y-2 group"
+          >
+            <div className="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors">
+              <ArrowDownLeft className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-gray-300 text-sm">Deposit</span>
+          </button>
+          
+          <button
+            onClick={() => setShowWithdraw(true)}
+            className="flex flex-col items-center space-y-2 group"
+          >
+            <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 transition-colors">
+              <ArrowUpRight className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-gray-300 text-sm">Withdraw</span>
+          </button>
+          
+          <button
+            onClick={() => setShowTransfer(true)}
+            className="flex flex-col items-center space-y-2 group"
+          >
+            <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 transition-colors">
+              <Repeat className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-gray-300 text-sm">Transfer</span>
+          </button>
+          
+          <button
+            onClick={() => setShowConvert(true)}
+            className="flex flex-col items-center space-y-2 group"
+          >
+            <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 transition-colors">
+              <RefreshCw className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-gray-300 text-sm">Convert</span>
+          </button>
+        </div>
+
+        {/* Account Sections */}
+        <div className="space-y-4 mb-8">
+          <div className="bg-gray-800/50 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/70 transition-colors">
+            <div>
+              <p className="text-white font-medium mb-1">Funding</p>
+              <p className="text-gray-400 text-sm">
+                {balanceVisible ? `${availableBalance.toFixed(2)} USD` : '••••••'}
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
           </div>
+          
+          <div className="bg-gray-800/50 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/70 transition-colors">
+            <div>
+              <p className="text-white font-medium mb-1">Unified Trading</p>
+              <p className="text-gray-400 text-sm">
+                {balanceVisible ? `${inUseBalance.toFixed(2)} USD` : '••••••'}
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </div>
+          
+          <div className="bg-gray-800/50 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/70 transition-colors">
+            <div>
+              <p className="text-white font-medium mb-1">Invested Products</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </div>
+          
+          <div className="bg-gray-800/50 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/70 transition-colors">
+            <div>
+              <p className="text-white font-medium mb-1">Earn</p>
+              <p className="text-gray-400 text-sm">
+                {balanceVisible ? `0.00 USD` : '••••••'}
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </div>
+        </div>
+
+        {/* Chat Button */}
+        <div className="fixed bottom-6 right-6">
+          <button className="w-14 h-14 rounded-full bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors shadow-lg">
+            <MessageCircle className="w-6 h-6 text-white" />
+          </button>
         </div>
       </div>
 
@@ -343,6 +378,31 @@ export default function Wallet() {
                   Withdrawal requests require admin approval
                 </p>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Fund Password <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showWithdrawFundPassword ? 'text' : 'password'}
+                    value={withdrawFundPassword}
+                    onChange={(e) => setWithdrawFundPassword(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all pr-12"
+                    placeholder="Enter fund password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWithdrawFundPassword(!showWithdrawFundPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    {showWithdrawFundPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Required for all withdrawals
+                </p>
+              </div>
               <div className="flex space-x-3">
                 <button
                   type="button"
@@ -360,6 +420,38 @@ export default function Wallet() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransfer && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-md rounded-2xl border border-gray-700/50 p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-semibold text-white mb-6">Transfer Funds</h2>
+            <p className="text-gray-400 mb-4">Transfer functionality coming soon...</p>
+            <button
+              onClick={() => setShowTransfer(false)}
+              className="w-full px-4 py-3 bg-gray-800/50 hover:bg-gray-800/80 text-white rounded-xl transition-all border border-gray-700/50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Convert Modal */}
+      {showConvert && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-md rounded-2xl border border-gray-700/50 p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-semibold text-white mb-6">Convert Assets</h2>
+            <p className="text-gray-400 mb-4">Convert functionality coming soon...</p>
+            <button
+              onClick={() => setShowConvert(false)}
+              className="w-full px-4 py-3 bg-gray-800/50 hover:bg-gray-800/80 text-white rounded-xl transition-all border border-gray-700/50"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

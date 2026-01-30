@@ -29,6 +29,7 @@ export interface WithdrawRequest {
   asset: string
   amount: number
   address: string
+  fundPassword?: string
 }
 
 export const walletService = {

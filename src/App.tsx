@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import Trade from './pages/Trade'
 import Wallet from './pages/Wallet'
 import Market from './pages/Market'
+import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
             <Route path="wallet" element={<Wallet />} />
             <Route path="market" element={<Market />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </Router>

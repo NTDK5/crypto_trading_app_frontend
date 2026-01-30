@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { TrendingUp } from 'lucide-react'
+
+declare global {
+  interface Window {
+    google: any
+  }
+}
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login, isAuthenticated } = useAuth()
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const { login, googleLogin, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const googleButtonRef = useRef<HTMLDivElement>(null)
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -17,6 +24,51 @@ export default function Login() {
       navigate('/app/dashboard', { replace: true })
     }
   }, [isAuthenticated, navigate])
+
+  // Load Google OAuth script
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    document.body.appendChild(script)
+
+    script.onload = () => {
+      if (window.google && googleButtonRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+          callback: handleGoogleSignIn,
+        })
+
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'signin_with',
+          locale: 'en',
+        })
+      }
+    }
+
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [])
+
+  const handleGoogleSignIn = async (response: any) => {
+    setGoogleLoading(true)
+    setError('')
+
+    try {
+      await googleLogin(response.credential)
+      setTimeout(() => {
+        navigate('/app/dashboard', { replace: true })
+      }, 100)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to sign in with Google. Please try again.')
+      setGoogleLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,12 +149,25 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-[1.02]"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-700"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gray-800/80 text-gray-400">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="mt-4" ref={googleButtonRef}></div>
+          </div>
 
           <p className="mt-6 text-center text-sm text-gray-400">
             Don't have an account?{' '}

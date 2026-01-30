@@ -19,6 +19,7 @@ export interface AuthResponse {
     email: string
     name: string
     role: string
+    isFundPasswordSet?: boolean
   }
 }
 
@@ -42,6 +43,37 @@ export const authService = {
 
   async logout(): Promise<void> {
     await api.post('/auth/logout')
+  },
+
+  async googleLogin(idToken: string): Promise<AuthResponse> {
+    const response = await api.post<{ success: boolean; data: AuthResponse }>('/auth/google', { idToken })
+    return response.data.data
+  },
+
+  async getUserProfile(): Promise<AuthResponse['user']> {
+    const response = await api.get<{ success: boolean; data: AuthResponse['user'] }>('/auth/profile')
+    return response.data.data
+  },
+
+  async setFundPassword(fundPassword: string): Promise<{ isFundPasswordSet: boolean }> {
+    const response = await api.post<{ success: boolean; data: { isFundPasswordSet: boolean } }>('/auth/fund-password/set', {
+      fundPassword,
+    })
+    return response.data.data
+  },
+
+  async updateFundPassword(currentPassword: string, newPassword: string): Promise<void> {
+    await api.post('/auth/fund-password/update', {
+      currentPassword,
+      newPassword,
+    })
+  },
+
+  async verifyFundPassword(fundPassword: string): Promise<{ verified: boolean }> {
+    const response = await api.post<{ success: boolean; data: { verified: boolean } }>('/auth/fund-password/verify', {
+      fundPassword,
+    })
+    return response.data.data
   },
 }
 
