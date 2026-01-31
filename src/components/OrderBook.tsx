@@ -39,11 +39,11 @@ export default function OrderBook({ orderBook, grouping, onGroupingChange }: Ord
 
   // Calculate max total for depth visualization
   const asksReversed = [...asks].reverse() // Original order for calculation
-  const maxAskTotal = asksReversed.reduce((sum, ask, idx) => {
+  const maxAskTotal = asksReversed.reduce((sum, ask) => {
     return sum + parseFloat(ask[1]) * parseFloat(ask[0])
   }, 0)
 
-  const maxBidTotal = bids.reduce((sum, bid, idx) => {
+  const maxBidTotal = bids.reduce((sum, bid) => {
     return sum + parseFloat(bid[1]) * parseFloat(bid[0])
   }, 0)
 

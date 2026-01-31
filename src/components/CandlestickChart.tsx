@@ -303,7 +303,7 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
 
       // Auto-scroll to the latest data
       if (chartRef.current && formattedData.length > 0) {
-        const lastTime = formattedData[formattedData.length - 1].time
+        // const _lastTime: Time = formattedData[formattedData.length - 1].time
         chartRef.current.timeScale().scrollToPosition(-1, true)
       }
     }

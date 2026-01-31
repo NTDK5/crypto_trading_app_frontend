@@ -2,13 +2,7 @@ import { useMemo } from 'react'
 import { ArrowUpRight, ArrowDownRight, Flame } from 'lucide-react'
 import { useCryptoWebSocket } from '../hooks/useCryptoWebSocket'
 
-interface CryptoData {
-  id: string
-  symbol: string
-  name: string
-  current_price: number
-  price_change_percentage_24h: number
-}
+
 
 export default function TrendingNow() {
   const { cryptoData, loading } = useCryptoWebSocket({ useWebSocket: true })

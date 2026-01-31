@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react'
 import { 
-  Settings as SettingsIcon, 
   Shield, 
   Lock, 
   Key, 
   Eye, 
   EyeOff,
   TrendingUp,
-  TrendingDown,
-  DollarSign,
-  BarChart3,
   Clock,
   Globe,
   CheckCircle2,
@@ -18,12 +14,12 @@ import {
   ArrowDownLeft,
   ArrowUpRightSquare ,
   User,
-  Mail,
-  Calendar
+  BarChart3,
+  DollarSign,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { authService } from '../services/authService'
-import { walletService } from '../services/walletService'
+// import { walletService } from '../services/walletService'
 import { tradeService } from '../services/tradeService'
 
 type TabType = 'dashboard' | 'identity' | 'history' | 'security'
@@ -73,7 +69,7 @@ export default function Settings() {
   const fetchStats = async () => {
     try {
       // Fetch wallet and trade data to calculate stats
-      const balances = await walletService.getBalances()
+      // const balances = await walletService.getBalances()
       const trades = await tradeService.getUserTrades()
       
       const totalDeposits = 0 // TODO: Calculate from transactions

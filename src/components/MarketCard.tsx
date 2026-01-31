@@ -1,6 +1,6 @@
 import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { MarketSparkline } from "./MarketSparkLine"
-import { memo, useMemo } from "react"
+import {  useMemo } from "react"
 
 
 type Props = {

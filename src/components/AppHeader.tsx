@@ -104,7 +104,7 @@ export default function AppHeader() {
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Balance</p>
                   <p className="text-sm font-bold text-white">
-                    {balance.available.toFixed(2)} {balance.asset}
+                    {balance.available?.toFixed(2)} {balance.asset}
                   </p>
                 </div>
               </div>

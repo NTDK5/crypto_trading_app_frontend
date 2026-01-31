@@ -58,11 +58,11 @@ export default function Dashboard() {
   const lockedBalance = balances.reduce((s, b) => s + (b.locked || 0), 0)
   const availableBalance = totalBalance - lockedBalance
 
-  const wonTrades = trades.filter(t => t.status === 'WON').length
-  const lostTrades = trades.filter(t => t.status === 'LOST').length
-  const totalTrades = trades.length
-  const winRate = totalTrades ? (wonTrades / totalTrades) * 100 : 0
-  const totalProfit = trades.reduce((s, t) => s + (t.profit || 0), 0)
+  // const wonTrades = trades.filter(t => t.status === 'WON').length
+  // const lostTrades = trades.filter(t => t.status === 'LOST').length
+  // const totalTrades = trades.length
+  // const winRate = totalTrades ? (wonTrades / totalTrades) * 100 : 0
+  // const totalProfit = trades.reduce((s, t) => s + (t.profit || 0), 0)
   const recentTrades = trades.slice(0, 5)
 
   if (loading) {

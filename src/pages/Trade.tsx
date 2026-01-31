@@ -28,15 +28,15 @@ export default function Trade() {
   const [high24h, setHigh24h] = useState(0)
   const [low24h, setLow24h] = useState(0)
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false)
-  const [activeTrade, setActiveTrade] = useState<TradeType | null>(null)
+  const [_activeTrade, setActiveTrade] = useState<TradeType | null>(null)
   const [ma7, setMa7] = useState(0)
   const [ma14, setMa14] = useState(0)
   const [ma28, setMa28] = useState(0)
 
   // Polling intervals
-  const marketDataIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const orderBookIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const candlestickIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const marketDataIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const orderBookIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const candlestickIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Fetch all markets on mount
   useEffect(() => {
@@ -154,17 +154,17 @@ export default function Trade() {
     return price.toFixed(8)
   }
 
-  const formatVolume = (volume: number) => {
-    if (volume >= 1000000) {
-      return `${(volume / 1000000).toFixed(2)}M`
-    }
-    if (volume >= 1000) {
-      return `${(volume / 1000).toFixed(2)}K`
-    }
-    return volume.toFixed(2)
-  }
+  // const formatVolume = (volume: number) => {
+  //   if (volume >= 1000000) {
+  //     return `${(volume / 1000000).toFixed(2)}M`
+  //   }
+  //   if (volume >= 1000) {
+  //     return `${(volume / 1000).toFixed(2)}K`
+  //   }
+  //   return volume.toFixed(2)
+  // }
 
-  const selectedMarket = markets.find((m) => m.symbol === selectedSymbol)
+  // const selectedMarket = markets.find((m) => m.symbol === selectedSymbol)
 
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-white overflow-hidden">

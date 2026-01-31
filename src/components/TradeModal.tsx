@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X, ArrowUp, ArrowDown, Clock } from 'lucide-react'
-import { tradeService, Trade as TradeType } from '../services/tradeService'
+import { X, ArrowUp, ArrowDown } from 'lucide-react'
+import { tradeService} from '../services/tradeService'
 import { walletService } from '../services/walletService'
 
 const DURATIONS = [30, 60, 120, 300] // seconds
@@ -17,7 +17,6 @@ export default function TradeModal({
   isOpen,
   onClose,
   selectedAsset,
-  currentPrice,
   onTradeSuccess,
 }: TradeModalProps) {
   const [selectedDirection, setSelectedDirection] = useState<'UP' | 'DOWN' | null>(null)

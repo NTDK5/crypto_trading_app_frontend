@@ -18,7 +18,7 @@ class CryptoWebSocketService {
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 3000
-  private reconnectTimer: NodeJS.Timeout | null = null
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   // Map CoinGecko IDs to Binance symbols
   private symbolMap: Record<string, string> = {
