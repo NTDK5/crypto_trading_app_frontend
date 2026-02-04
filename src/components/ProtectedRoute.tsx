@@ -1,4 +1,4 @@
-import { Navigate} from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -6,8 +6,8 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-dark-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="flex items-center justify-center min-h-screen bg-black">
+        <div className="h-12 w-12 rounded-full border-t-2 border-b-2 border-cyan-400 animate-spin" />
       </div>
     )
   }
@@ -17,7 +17,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const authenticated = isAuthenticated || !!token
 
   if (!authenticated) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/login" replace />
   }
 
   return <>{children}</>

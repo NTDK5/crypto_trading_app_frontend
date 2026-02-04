@@ -110,6 +110,12 @@ export default function Login() {
         </div>
 
         <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
+          {(loading || googleLoading) && (
+            <div className="mb-4 flex items-center justify-center gap-3 text-sm text-cyan-300">
+              <div className="h-4 w-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+              <span>{googleLoading ? 'Signing in with Google...' : 'Signing in...'}</span>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">

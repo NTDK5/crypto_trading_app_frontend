@@ -18,6 +18,8 @@ export default function Wallet() {
   const [showWithdrawFundPassword, setShowWithdrawFundPassword] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [balanceVisible, setBalanceVisible] = useState(true)
+  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
   
   // Calculate totals
   const totalAssetsUSD = balances.reduce((sum, b) => sum + (b.balance || 0), 0)
@@ -57,6 +59,8 @@ export default function Wallet() {
       })
       setMessage({ type: 'success', text: 'Deposit request submitted successfully!' })
       setDepositAmount('')
+      setPaymentScreenshot(null)
+      setScreenshotPreview(null)
       setShowDeposit(false)
       fetchData()
     } catch (error: any) {
@@ -119,7 +123,7 @@ export default function Wallet() {
               <button className="p-2 text-gray-400 hover:text-white transition-colors">
                 <Settings className="w-5 h-5" />
               </button>
-              <button 
+              <button
                 onClick={() => setBalanceVisible(!balanceVisible)}
                 className="p-2 text-gray-400 hover:text-white transition-colors"
               >
@@ -299,6 +303,40 @@ export default function Wallet() {
               Deposit Funds
             </h2>
             <form onSubmit={handleDeposit} className="space-y-5">
+              {/* Deposit address / wallet placeholder */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    Deposit Network
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-800/70 text-gray-200">
+                    USDT • TRC20 (Demo)
+                  </span>
+                </div>
+                <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 px-4 py-3">
+                  <p className="text-xs text-gray-400 mb-1">Deposit Address</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-mono text-gray-100 break-all">
+                      TXX8C6D4PLH8XXXXPLACEHOLDERXXXXWALLET
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigator.clipboard?.writeText(
+                          'TXX8C6D4PLH8XXXXPLACEHOLDERXXXXWALLET',
+                        )
+                      }
+                      className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors whitespace-nowrap"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[11px] text-amber-300/80">
+                    Send only USDT to this address. Network and address are placeholders for demo
+                    purposes.
+                  </p>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Amount (USDT)
@@ -316,6 +354,52 @@ export default function Wallet() {
                 <p className="text-xs text-gray-400 mt-2">
                   Deposit requests require admin approval
                 </p>
+              </div>
+              {/* Payment confirmation / screenshot section */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300">
+                  Payment Confirmation (optional)
+                </label>
+                <p className="text-xs text-gray-400">
+                  Upload a transfer receipt or screenshot so our team can verify your deposit
+                  faster.
+                </p>
+                <label className="mt-1 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-700 rounded-xl px-4 py-4 cursor-pointer hover:border-green-500/60 hover:bg-gray-800/40 transition-colors">
+                  <span className="text-xs font-medium text-gray-200">
+                    Click to upload or drag & drop
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    PNG, JPG, JPEG up to 5MB
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setPaymentScreenshot(file)
+                        const url = URL.createObjectURL(file)
+                        setScreenshotPreview(url)
+                      } else {
+                        setPaymentScreenshot(null)
+                        setScreenshotPreview(null)
+                      }
+                    }}
+                  />
+                </label>
+                {screenshotPreview && (
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-400 mb-1">Preview</p>
+                    <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-700/70">
+                      <img
+                        src={screenshotPreview}
+                        alt="Payment receipt preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex space-x-3">
                 <button

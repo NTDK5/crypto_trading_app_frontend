@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ArrowUp, ArrowDown, Repeat, Zap} from 'lucide-react'
+import { ArrowUp, ArrowDown, Repeat, Zap } from 'lucide-react'
 import { tradeService, Trade } from '../services/tradeService'
 import { walletService, WalletBalance } from '../services/walletService'
 import { marketService, MarketData } from '../services/marketService'
-import {MarketCard} from "../components/MarketCard"
-import  DashboardHero  from '../components/DashboardHero'
+import { MarketCard } from '../components/MarketCard'
+import DashboardHero from '../components/DashboardHero'
 import { useAuth } from '../contexts/AuthContext'
 import FundPasswordModal from '../components/FundPasswordModal'
 
@@ -46,7 +46,13 @@ export default function Dashboard() {
       ])
       setTrades(Array.isArray(tradesData) ? tradesData : [])
       setBalances(Array.isArray(balancesData) ? balancesData : [])
-      setMarketData(Array.isArray(marketDataData) ? marketDataData.slice(0, 5) : [])
+      // Sort by 24h change and keep top 8 for ticker/top markets
+      if (Array.isArray(marketDataData)) {
+        const sorted = [...marketDataData].sort((a, b) => b.change24h - a.change24h)
+        setMarketData(sorted.slice(0, 8))
+      } else {
+        setMarketData([])
+      }
       setLoading(false)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
@@ -67,8 +73,57 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
-        <div className="animate-spin h-14 w-14 rounded-full border-t-2 border-cyan-400" />
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#0ff2,_#000_45%)] px-6 py-8 text-white">
+        <div className="max-w-7xl mx-auto space-y-10">
+          {/* Page title skeleton */}
+          <div className="space-y-3 mt-8">
+            <div className="h-10 w-48 bg-white/10 rounded-lg animate-pulse" />
+            <div className="h-4 w-40 bg-white/5 rounded-lg animate-pulse" />
+          </div>
+
+          {/* Hero skeleton */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="md:col-span-2 h-40 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-40 bg-white/5 rounded-2xl animate-pulse" />
+          </div>
+
+          {/* Balance + actions skeleton */}
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 items-center my-10">
+            <div className="space-y-3 w-full md:w-auto">
+              <div className="h-3 w-32 bg-white/10 rounded animate-pulse" />
+              <div className="h-10 w-52 bg-white/10 rounded animate-pulse" />
+              <div className="h-4 w-64 bg-white/5 rounded animate-pulse" />
+            </div>
+            <div className="h-10 w-40 bg-white/10 rounded-xl animate-pulse" />
+          </div>
+
+          {/* Markets ticker skeleton */}
+          <div className="my-10">
+            <div className="flex gap-6 overflow-x-auto no-scrollbar">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="min-w-[200px] h-32 rounded-2xl bg-white/5 animate-pulse"
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Lists skeleton */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {Array.from({ length: 2 }).map((_, colIdx) => (
+              <div key={colIdx} className="space-y-4">
+                <div className="h-5 w-32 bg-white/10 rounded animate-pulse" />
+                {Array.from({ length: 4 }).map((__, rowIdx) => (
+                  <div
+                    key={rowIdx}
+                    className="h-14 bg-white/5 rounded-lg animate-pulse"
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -76,7 +131,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#0ff2,_#000_45%)] px-6 py-8 text-white">
       <div className="max-w-7xl mx-auto">
-        <div className=' mb-20'>
+        <div className="mb-10 md:mb-20">
           <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">
             Dashboard
           </h1>
@@ -85,19 +140,28 @@ export default function Dashboard() {
         <DashboardHero />
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 items-center my-20">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 items-center my-10 md:my-20">
 
 
           <div className="text-left space-y-2">
-            <p className="text-xs tracking-widest text-gray-400 text-semibold">AVAILABLE BALANCE</p>
+            <p className="text-xs tracking-widest text-gray-400 font-semibold">
+              AVAILABLE BALANCE
+            </p>
             <p className="text-5xl font-bold text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]">
               {availableBalance.toFixed(2)} <span className="text-sm text-gray-400">USDT</span>
             </p>
-            <p className="text-sm">Welcome back, <span className="text-yellow-600">natantamiru18@gmail.com</span></p>
+            <p className="text-sm">
+              Welcome back,
+              <span className="text-yellow-600">
+                {' '}
+                {user?.email}
+              </span>
+            </p>
           </div>
-          <button className="py-2 px-8 text-center text-yellow-400 rounded-xl border-[1px] flex items-center gap-2 border-red-200 transition">
-             <ArrowDown/> <span className="text-sm">Deposite</span>
-            </button>
+          <button className="py-2 px-8 text-center text-yellow-400 rounded-xl border border-red-200 flex items-center gap-2 transition">
+            <ArrowDown />
+            <span className="text-sm">Deposit</span>
+          </button>
         </div>
 
         {/* STATS – FLAT NEON STRIP */}
@@ -131,13 +195,13 @@ export default function Dashboard() {
         </div> */}
 
         {/* MARKETS – NEON TICKER */}
-        <div className=" my-20 relative">
+        <div className="my-10 md:my-20 relative">
           <div className="flex gap-6 overflow-x-auto scroll-smooth no-scrollbar">
             {marketData.map(m => (
-              <div key={m.asset} className="min-w-[160px] flex-shrink-0">
+              <div key={m.asset} className="min-w-[200px] flex-shrink-0">
                 <MarketCard
                   asset={m.asset}
-                  pair="Gold vs USD"
+                  pair={`${m.asset}/USDT`}
                   price={m.price}
                   change={m.change24h}
                 />
@@ -148,7 +212,7 @@ export default function Dashboard() {
 
 
         {/* ACTIONS */}
-        <div className="grid grid-cols-4 gap-4 my-20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-10 md:my-20">
           {['Deposit', 'Trade', 'Withdraw', 'Demo'].map(a => (
             <button
               key={a}
@@ -161,7 +225,7 @@ export default function Dashboard() {
         </div>
 
         {/* LISTS */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-6 mt-10">
 
           {/* RECENT TRADES */}
           <div className="space-y-3">
@@ -185,14 +249,21 @@ export default function Dashboard() {
           {/* TOP MARKETS */}
           <div className="space-y-3">
             <h2 className="text-xl font-semibold text-cyan-300">Top Markets</h2>
-            {marketData.map(a => (
-              <div key={a.asset} className="flex justify-between px-4 py-3 border border-gray-700 rounded-lg bg-black/40">
-                <p>{a.asset}</p>
-                <p className={a.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                  {a.change24h >= 0 ? '+' : ''}{a.change24h.toFixed(2)}%
-                </p>
-              </div>
-            ))}
+            {marketData
+              .slice()
+              .sort((a, b) => b.change24h - a.change24h)
+              .map(a => (
+                <div
+                  key={a.asset}
+                  className="flex justify-between px-4 py-3 border border-gray-700 rounded-lg bg-black/40"
+                >
+                  <p>{a.asset}</p>
+                  <p className={a.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    {a.change24h >= 0 ? '+' : ''}
+                    {a.change24h.toFixed(2)}%
+                  </p>
+                </div>
+              ))}
           </div>
 
         </div>
