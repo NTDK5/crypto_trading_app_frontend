@@ -44,13 +44,16 @@ export default function Dashboard() {
         walletService.getBalances(),
         marketService.getAllMarketData(),
       ])
+      console.log('Market data received:', marketDataData)
       setTrades(Array.isArray(tradesData) ? tradesData : [])
       setBalances(Array.isArray(balancesData) ? balancesData : [])
       // Sort by 24h change and keep top 8 for ticker/top markets
       if (Array.isArray(marketDataData)) {
         const sorted = [...marketDataData].sort((a, b) => b.change24h - a.change24h)
+        console.log('Sorted market data:', sorted)
         setMarketData(sorted.slice(0, 8))
       } else {
+        console.warn('Market data is not an array:', marketDataData)
         setMarketData([])
       }
       setLoading(false)
@@ -131,26 +134,25 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#0ff2,_#000_45%)] px-6 py-8 text-white">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-10 md:mb-20">
-          <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <div className="mb-6 md:mb-10 lg:mb-20">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">
             Dashboard
           </h1>
-          <p className="text-gray-400 mt-2">Live trading performance</p>
+          <p className="text-gray-400 mt-2 text-sm md:text-base">Live trading performance</p>
         </div>
         <DashboardHero />
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 items-center my-10 md:my-20">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6 items-start my-6 md:my-10 lg:my-20">
 
-
-          <div className="text-left space-y-2">
+          <div className="text-left space-y-2 w-full md:w-auto">
             <p className="text-xs tracking-widest text-gray-400 font-semibold">
               AVAILABLE BALANCE
             </p>
-            <p className="text-5xl font-bold text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]">
-              {availableBalance.toFixed(2)} <span className="text-sm text-gray-400">USDT</span>
+            <p className="text-3xl md:text-4xl lg:text-5xl font-bold text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]">
+              {availableBalance.toFixed(2)} <span className="text-xs md:text-sm text-gray-400">USDT</span>
             </p>
-            <p className="text-sm">
+            <p className="text-xs md:text-sm">
               Welcome back,
               <span className="text-yellow-600">
                 {' '}
@@ -158,7 +160,7 @@ export default function Dashboard() {
               </span>
             </p>
           </div>
-          <button className="py-2 px-8 text-center text-yellow-400 rounded-xl border border-red-200 flex items-center gap-2 transition">
+          <button className="py-2 px-6 md:px-8 text-center text-yellow-400 rounded-xl border border-red-200 flex items-center gap-2 transition hover:bg-yellow-400/10 w-full md:w-auto justify-center">
             <ArrowDown />
             <span className="text-sm">Deposit</span>
           </button>
@@ -195,10 +197,11 @@ export default function Dashboard() {
         </div> */}
 
         {/* MARKETS – NEON TICKER */}
-        <div className="my-10 md:my-20 relative">
-          <div className="flex gap-6 overflow-x-auto scroll-smooth no-scrollbar">
+        <div className="my-6 md:my-10 lg:my-20 relative">
+          <h2 className="text-lg md:text-xl font-semibold text-cyan-300 mb-4 px-2">Top Markets</h2>
+          <div className="flex gap-3 md:gap-4 lg:gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2">
             {marketData.map(m => (
-              <div key={m.asset} className="min-w-[200px] flex-shrink-0">
+              <div key={m.asset} className="min-w-[240px] md:min-w-[260px] flex-shrink-0 snap-start">
                 <MarketCard
                   asset={m.asset}
                   pair={`${m.asset}/USDT`}
@@ -212,11 +215,11 @@ export default function Dashboard() {
 
 
         {/* ACTIONS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-10 md:my-20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 my-6 md:my-10 lg:my-20">
           {['Deposit', 'Trade', 'Withdraw', 'Demo'].map(a => (
             <button
               key={a}
-              className="flex items-center justify-center border-[1px] border-transparent py-4 rounded-xl hover:bg-yellow-400/10  hover:border-yellow-300 hover:shadow-[0_0_15px_rgba(250,204,21,0.4)] transition"
+              className="flex items-center justify-center border-[1px] border-transparent py-3 md:py-4 rounded-xl hover:bg-yellow-400/10  hover:border-yellow-300 hover:shadow-[0_0_15px_rgba(250,204,21,0.4)] transition text-sm md:text-base"
             >
               {actionIcons[a]}
               {a}
@@ -225,19 +228,19 @@ export default function Dashboard() {
         </div>
 
         {/* LISTS */}
-        <div className="grid lg:grid-cols-2 gap-6 mt-10">
+        <div className="grid lg:grid-cols-2 gap-4 md:gap-6 mt-6 md:mt-10">
 
           {/* RECENT TRADES */}
           <div className="space-y-3">
-            <h2 className="text-xl font-semibold text-cyan-300">Recent Trades</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-cyan-300">Recent Trades</h2>
             {recentTrades.map(t => (
-              <div key={t.id} className="flex justify-between px-4 py-3 border border-gray-700 rounded-lg bg-black/40">
+              <div key={t.id} className="flex justify-between px-3 md:px-4 py-3 border border-gray-700 rounded-lg bg-black/40">
                 <div>
-                  <p className="font-medium">{t.asset}</p>
+                  <p className="font-medium text-sm md:text-base">{t.asset}</p>
                   <p className="text-xs text-gray-500">{new Date(t.createdAt).toLocaleString()}</p>
                 </div>
                 <div className="text-right">
-                  <p>{t.amount} USDT</p>
+                  <p className="text-sm md:text-base">{t.amount} USDT</p>
                   <p className={`text-xs ${t.status === 'WON' ? 'text-green-400' : t.status === 'LOST' ? 'text-red-400' : 'text-yellow-400'}`}>
                     {t.status}
                   </p>
@@ -248,16 +251,16 @@ export default function Dashboard() {
 
           {/* TOP MARKETS */}
           <div className="space-y-3">
-            <h2 className="text-xl font-semibold text-cyan-300">Top Markets</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-cyan-300">Top Markets</h2>
             {marketData
               .slice()
               .sort((a, b) => b.change24h - a.change24h)
               .map(a => (
                 <div
                   key={a.asset}
-                  className="flex justify-between px-4 py-3 border border-gray-700 rounded-lg bg-black/40"
+                  className="flex justify-between px-3 md:px-4 py-3 border border-gray-700 rounded-lg bg-black/40"
                 >
-                  <p>{a.asset}</p>
+                  <p className="text-sm md:text-base">{a.asset}</p>
                   <p className={a.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
                     {a.change24h >= 0 ? '+' : ''}
                     {a.change24h.toFixed(2)}%

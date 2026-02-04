@@ -82,11 +82,11 @@ export default function Market() {
     <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black py-8 px-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
             Market Overview
           </h1>
-          <p className="text-gray-400 text-lg">Real-time cryptocurrency market data and analysis</p>
+          <p className="text-gray-400 text-sm md:text-base lg:text-lg">Real-time cryptocurrency market data and analysis</p>
         </div>
 
         {/* Market Table */}
@@ -94,12 +94,12 @@ export default function Market() {
           <MarketTable />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
           {/* Market List */}
           <div className="lg:col-span-1 space-y-3">
-            <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-4">
-              <h2 className="text-lg font-semibold text-white mb-4">Markets</h2>
-              <div className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-hide">
+            <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-3 md:p-4">
+              <h2 className="text-base md:text-lg font-semibold text-white mb-4">Markets</h2>
+              <div className="space-y-2 max-h-[400px] md:max-h-[600px] overflow-y-auto scrollbar-hide">
                 {marketData.map((asset) => {
                   const isSelected = selectedAsset === asset.asset
                   const assetIsPositive = asset.change24h >= 0
@@ -107,19 +107,17 @@ export default function Market() {
                     <button
                       key={asset.asset}
                       onClick={() => setSelectedAsset(asset.asset)}
-                      className={`w-full p-4 rounded-xl border transition-all duration-300 text-left group ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-cyan-500/50 shadow-lg shadow-cyan-500/20'
-                          : 'bg-gray-800/50 border-gray-700/50 hover:border-cyan-500/50 hover:bg-gray-800/80'
-                      }`}
+                      className={`w-full p-4 rounded-xl border transition-all duration-300 text-left group ${isSelected
+                        ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-cyan-500/50 shadow-lg shadow-cyan-500/20'
+                        : 'bg-gray-800/50 border-gray-700/50 hover:border-cyan-500/50 hover:bg-gray-800/80'
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                            isSelected 
-                              ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white' 
-                              : 'bg-gray-700 text-gray-300'
-                          }`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isSelected
+                            ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
+                            : 'bg-gray-700 text-gray-300'
+                            }`}>
                             {asset.asset.replace('USDT', '')}
                           </div>
                           <div>
@@ -130,9 +128,8 @@ export default function Market() {
                         <div className="text-right">
                           <div className="text-white font-bold">${formatPrice(asset.price)}</div>
                           <div
-                            className={`text-sm font-semibold flex items-center justify-end ${
-                              assetIsPositive ? 'text-green-400' : 'text-red-400'
-                            }`}
+                            className={`text-sm font-semibold flex items-center justify-end ${assetIsPositive ? 'text-green-400' : 'text-red-400'
+                              }`}
                           >
                             {assetIsPositive ? (
                               <ArrowUpRight className="w-4 h-4 mr-1" />
@@ -168,9 +165,8 @@ export default function Market() {
                         ${formatPrice(selected.price)}
                       </div>
                       <div
-                        className={`text-xl font-semibold flex items-center justify-end ${
-                          isPositive ? 'text-green-400' : 'text-red-400'
-                        }`}
+                        className={`text-xl font-semibold flex items-center justify-end ${isPositive ? 'text-green-400' : 'text-red-400'
+                          }`}
                       >
                         {isPositive ? (
                           <TrendingUp className="w-6 h-6 mr-2" />
@@ -185,8 +181,8 @@ export default function Market() {
 
                   {/* Trading Chart */}
                   <div className="bg-black/30 rounded-xl p-4 border border-gray-800/50">
-                    <TradingChart 
-                      data={chartData} 
+                    <TradingChart
+                      data={chartData}
                       color={isPositive ? '#10b981' : '#ef4444'}
                       height={400}
                     />
@@ -216,9 +212,8 @@ export default function Market() {
                   <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-5 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/20">
                     <p className="text-sm text-gray-400 mb-2">24h Change</p>
                     <p
-                      className={`text-xl font-bold ${
-                        isPositive ? 'text-green-400' : 'text-red-400'
-                      }`}
+                      className={`text-xl font-bold ${isPositive ? 'text-green-400' : 'text-red-400'
+                        }`}
                     >
                       {isPositive ? '+' : ''}
                       {selected.change24h.toFixed(2)}%

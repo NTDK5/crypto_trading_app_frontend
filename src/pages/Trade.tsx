@@ -186,43 +186,41 @@ export default function Trade() {
           {/* Center Panel - Chart and Price Info */}
           <div className="flex-1 flex flex-col">
             {/* Price Display Header */}
-            <div className="p-6 border-b border-gray-800 bg-gray-900">
+            <div className="p-4 md:p-6 border-b border-gray-800 bg-gray-900">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h1 className="text-4xl font-bold text-white mb-1">
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-1">
                     {formatPrice(currentPrice)}
                   </h1>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-400 text-xs md:text-sm">
                     ≈{formatPrice(currentPrice)} USD
                   </p>
                   <p
-                    className={`text-sm font-medium mt-1 ${
-                      priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
-                    }`}
+                    className={`text-xs md:text-sm font-medium mt-1 ${priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}
                   >
                     {priceChange24h >= 0 ? '+' : ''}
                     {priceChange24h.toFixed(2)}% (24h)
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-gray-400 mb-1">24h High</div>
-                  <div className="text-white font-semibold">{formatPrice(high24h)}</div>
-                  <div className="text-sm text-gray-400 mb-1 mt-2">24h Low</div>
-                  <div className="text-white font-semibold">{formatPrice(low24h)}</div>
+                  <div className="text-xs md:text-sm text-gray-400 mb-1">24h High</div>
+                  <div className="text-sm md:text-base text-white font-semibold">{formatPrice(high24h)}</div>
+                  <div className="text-xs md:text-sm text-gray-400 mb-1 mt-2">24h Low</div>
+                  <div className="text-sm md:text-base text-white font-semibold">{formatPrice(low24h)}</div>
                 </div>
               </div>
 
               {/* Timeframe Selection */}
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-2">
                 {TIMEFRAMES.map((tf) => (
                   <button
                     key={tf.value}
                     onClick={() => setTimeframe(tf.value)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      timeframe === tf.value
-                        ? 'bg-cyan-500 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
+                    className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${timeframe === tf.value
+                      ? 'bg-cyan-500 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
                   >
                     {tf.label}
                   </button>
@@ -230,16 +228,16 @@ export default function Trade() {
               </div>
 
               {/* Moving Averages */}
-              <div className="flex gap-6 text-sm">
-                <div>
+              <div className="flex gap-3 md:gap-6 text-xs md:text-sm overflow-x-auto scrollbar-hide">
+                <div className="whitespace-nowrap">
                   <span className="text-gray-400">MA7: </span>
                   <span className="text-yellow-400 font-semibold">{formatPrice(ma7)}</span>
                 </div>
-                <div>
+                <div className="whitespace-nowrap">
                   <span className="text-gray-400">MA14: </span>
                   <span className="text-blue-400 font-semibold">{formatPrice(ma14)}</span>
                 </div>
-                <div>
+                <div className="whitespace-nowrap">
                   <span className="text-gray-400">MA28: </span>
                   <span className="text-purple-400 font-semibold">{formatPrice(ma28)}</span>
                 </div>
