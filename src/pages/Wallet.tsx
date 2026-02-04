@@ -18,7 +18,7 @@ export default function Wallet() {
   const [showWithdrawFundPassword, setShowWithdrawFundPassword] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [balanceVisible, setBalanceVisible] = useState(true)
-  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
+  const [_paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
   
   // Calculate totals
