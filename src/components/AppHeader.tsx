@@ -51,18 +51,20 @@ export default function AppHeader() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? 'bg-black/90 backdrop-blur-xl py-3 shadow-lg shadow-cyan-500/10'
-          : 'bg-black/60 backdrop-blur-md py-4'
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
+        ? 'bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-xl py-3 shadow-lg shadow-cyan-500/10 border-b border-cyan-500/10'
+        : 'bg-gradient-to-r from-gray-900/70 via-gray-800/70 to-gray-900/70 backdrop-blur-lg py-4 border-b border-gray-700/30'
+        }`}
     >
-      <div className="max-w-7xl mx-auto px-6">
+      {/* Animated glow effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-blue-500/5 to-purple-500/5 animate-pulse"></div>
+
+      <div className="max-w-7xl mx-auto px-6 relative">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/app/dashboard" className="flex items-center space-x-2 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-cyan-500 blur-xl opacity-50 group-hover:opacity-75 transition-opacity"></div>
+              <div className="absolute inset-0 bg-cyan-500 blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative text-xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
                 CryptoXD
               </div>
@@ -78,11 +80,10 @@ export default function AppHeader() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`relative px-4 py-2 rounded-lg transition-all duration-200 group ${
-                    isActive
-                      ? 'text-cyan-400'
-                      : 'text-gray-300 hover:text-cyan-400'
-                  }`}
+                  className={`relative px-4 py-2 rounded-lg transition-all duration-200 group ${isActive
+                    ? 'text-cyan-400'
+                    : 'text-gray-300 hover:text-cyan-400'
+                    }`}
                 >
                   {isActive && (
                     <div className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/30"></div>
@@ -100,7 +101,7 @@ export default function AppHeader() {
           <div className="flex items-center space-x-4">
             {/* Balance Display */}
             {balance && (
-              <div className="hidden lg:flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-lg">
+              <div className="hidden lg:flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-lg hover:border-cyan-500/30 transition-all duration-300">
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Balance</p>
                   <p className="text-sm font-bold text-white">
@@ -111,7 +112,7 @@ export default function AppHeader() {
             )}
 
             {/* User Info */}
-            <div className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-lg group">
+            <div className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-lg group hover:border-cyan-500/30 transition-all duration-300">
               <User className="w-5 h-5 text-gray-400 group-hover:text-cyan-400 transition-colors" />
               <div className="hidden sm:block">
                 <p className="text-sm font-medium text-white">{user?.name}</p>
@@ -122,11 +123,10 @@ export default function AppHeader() {
             {/* Settings Button */}
             <Link
               to="/app/settings"
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                location.pathname === '/app/settings'
-                  ? 'text-cyan-400 bg-cyan-500/10'
-                  : 'text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10'
-              }`}
+              className={`p-2 rounded-lg transition-all duration-200 ${location.pathname === '/app/settings'
+                ? 'text-cyan-400 bg-cyan-500/10'
+                : 'text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10'
+                }`}
               title="Settings"
             >
               <Settings className="w-5 h-5" />
@@ -152,11 +152,10 @@ export default function AppHeader() {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${
-                  isActive
-                    ? 'text-cyan-400'
-                    : 'text-gray-400'
-                }`}
+                className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition-all ${isActive
+                  ? 'text-cyan-400'
+                  : 'text-gray-400'
+                  }`}
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-xs font-medium">{item.name}</span>
