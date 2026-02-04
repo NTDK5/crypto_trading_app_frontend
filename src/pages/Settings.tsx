@@ -192,7 +192,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 py-8 px-6">
+    <div className="min-h-screen bg-gray-900 py-6 px-4 sm:py-8 sm:px-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -201,7 +201,7 @@ export default function Settings() {
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 mb-8 border-b border-gray-700">
+        <div className="flex overflow-x-auto scrollbar-hide space-x-1 mb-6 sm:mb-8 border-b border-gray-700 pb-1">
           {[
             { id: 'dashboard' as TabType, label: 'Dashboard', icon: ArrowUpRightSquare },
             { id: 'identity' as TabType, label: 'Identity Verification', icon: User },
@@ -211,7 +211,7 @@ export default function Settings() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-3 flex items-center space-x-2 border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-2 sm:py-3 flex items-center space-x-2 border-b-2 text-sm sm:text-base transition-colors ${
                 activeTab === tab.id
                   ? 'border-red-500 text-white bg-red-500/10'
                   : 'border-transparent text-gray-400 hover:text-white'
@@ -227,7 +227,7 @@ export default function Settings() {
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-400 text-sm">Total Deposits</span>
@@ -259,7 +259,7 @@ export default function Settings() {
             </div>
 
             {/* Performance and Security Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Portfolio Performance */}
               <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
                 <div className="flex items-center justify-between mb-4">

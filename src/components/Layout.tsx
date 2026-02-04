@@ -7,7 +7,7 @@ export default function Layout() {
       <AppHeader />
       {/* Extra top padding so content clears the fixed header (including mobile nav) */}
       {/* Extra bottom padding on mobile so content isn't hidden behind bottom nav */}
-      <main className="pt-28 md:pt-24 lg:pt-20 pb-24 md:pb-10 min-h-screen">
+      <main className="pt-40 sm:pt-40 md:pt-24 lg:pt-20 pb-28 md:pb-12 min-h-screen">
         <Outlet />
       </main>
     </div>

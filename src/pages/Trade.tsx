@@ -167,11 +167,11 @@ export default function Trade() {
   // const selectedMarket = markets.find((m) => m.symbol === selectedSymbol)
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900 text-white overflow-hidden">
+    <div className="min-h-screen bg-gray-900 text-white">
       {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-col lg:flex-row">
         {/* Left Panel - Markets List */}
-        <div className="w-80 flex-shrink-0">
+        <div className="w-full lg:w-80 lg:flex-shrink-0 border-b border-gray-800 lg:border-b-0 lg:border-r">
           <MarketList
             markets={markets}
             selectedSymbol={selectedSymbol}
@@ -181,161 +181,164 @@ export default function Trade() {
           />
         </div>
 
-        {/* Center Panel - Chart and Price Info */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Price Display Header */}
-          <div className="p-6 border-b border-gray-800 bg-gray-900">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h1 className="text-4xl font-bold text-white mb-1">
-                  {formatPrice(currentPrice)}
-                </h1>
-                <p className="text-gray-400 text-sm">
-                  ≈{formatPrice(currentPrice)} USD
-                </p>
-                <p
-                  className={`text-sm font-medium mt-1 ${
-                    priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
-                  }`}
-                >
-                  {priceChange24h >= 0 ? '+' : ''}
-                  {priceChange24h.toFixed(2)}% (24h)
-                </p>
+        {/* Center + Right Panels */}
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          {/* Center Panel - Chart and Price Info */}
+          <div className="flex-1 flex flex-col">
+            {/* Price Display Header */}
+            <div className="p-6 border-b border-gray-800 bg-gray-900">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-4xl font-bold text-white mb-1">
+                    {formatPrice(currentPrice)}
+                  </h1>
+                  <p className="text-gray-400 text-sm">
+                    ≈{formatPrice(currentPrice)} USD
+                  </p>
+                  <p
+                    className={`text-sm font-medium mt-1 ${
+                      priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {priceChange24h >= 0 ? '+' : ''}
+                    {priceChange24h.toFixed(2)}% (24h)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-400 mb-1">24h High</div>
+                  <div className="text-white font-semibold">{formatPrice(high24h)}</div>
+                  <div className="text-sm text-gray-400 mb-1 mt-2">24h Low</div>
+                  <div className="text-white font-semibold">{formatPrice(low24h)}</div>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm text-gray-400 mb-1">24h High</div>
-                <div className="text-white font-semibold">{formatPrice(high24h)}</div>
-                <div className="text-sm text-gray-400 mb-1 mt-2">24h Low</div>
-                <div className="text-white font-semibold">{formatPrice(low24h)}</div>
+
+              {/* Timeframe Selection */}
+              <div className="flex gap-2 mb-4">
+                {TIMEFRAMES.map((tf) => (
+                  <button
+                    key={tf.value}
+                    onClick={() => setTimeframe(tf.value)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      timeframe === tf.value
+                        ? 'bg-cyan-500 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {tf.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Moving Averages */}
+              <div className="flex gap-6 text-sm">
+                <div>
+                  <span className="text-gray-400">MA7: </span>
+                  <span className="text-yellow-400 font-semibold">{formatPrice(ma7)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">MA14: </span>
+                  <span className="text-blue-400 font-semibold">{formatPrice(ma14)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">MA28: </span>
+                  <span className="text-purple-400 font-semibold">{formatPrice(ma28)}</span>
+                </div>
               </div>
             </div>
 
-            {/* Timeframe Selection */}
-            <div className="flex gap-2 mb-4">
-              {TIMEFRAMES.map((tf) => (
-                <button
-                  key={tf.value}
-                  onClick={() => setTimeframe(tf.value)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    timeframe === tf.value
-                      ? 'bg-cyan-500 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  }`}
-                >
-                  {tf.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Moving Averages */}
-            <div className="flex gap-6 text-sm">
-              <div>
-                <span className="text-gray-400">MA7: </span>
-                <span className="text-yellow-400 font-semibold">{formatPrice(ma7)}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">MA14: </span>
-                <span className="text-blue-400 font-semibold">{formatPrice(ma14)}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">MA28: </span>
-                <span className="text-purple-400 font-semibold">{formatPrice(ma28)}</span>
-              </div>
+            {/* Chart */}
+            <div className="flex-1 p-4 bg-gray-900">
+              {candlestickData.length > 0 ? (
+                <CandlestickChart data={candlestickData} height={400} />
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  Loading chart...
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Chart */}
-          <div className="flex-1 p-4 bg-gray-900">
-            {candlestickData.length > 0 ? (
-              <CandlestickChart data={candlestickData} height={500} />
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-500">
-                Loading chart...
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Panel - Order Book and Trading */}
-        <div className="w-80 flex-shrink-0 flex flex-col border-l border-gray-800">
-          {/* Order Book */}
-          <div className="flex-1 overflow-hidden">
-            <OrderBook
-              orderBook={orderBook}
-              grouping={grouping}
-              onGroupingChange={setGrouping}
-            />
-          </div>
-
-          {/* Trading Interface */}
-          <div className="p-4 bg-gray-900 border-t border-gray-800">
-            <div className="flex gap-2 mb-4 border-b border-gray-700">
-              {['Market', 'Limit', 'Stop', 'Stop Limit'].map((type) => (
-                <button
-                  key={type}
-                  className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-                >
-                  {type}
-                </button>
-              ))}
+          {/* Right Panel - Order Book and Trading */}
+          <div className="w-full lg:w-80 lg:flex-shrink-0 flex flex-col border-t border-gray-800 lg:border-t-0 lg:border-l">
+            {/* Order Book */}
+            <div className="flex-1 overflow-y-auto max-h-80 lg:max-h-none">
+              <OrderBook
+                orderBook={orderBook}
+                grouping={grouping}
+                onGroupingChange={setGrouping}
+              />
             </div>
 
-            <div className="space-y-4">
-              <div className="flex gap-2">
+            {/* Trading Interface */}
+            <div className="p-4 bg-gray-900 border-t border-gray-800">
+              <div className="flex gap-2 mb-4 border-b border-gray-700">
+                {['Market', 'Limit', 'Stop', 'Stop Limit'].map((type) => (
+                  <button
+                    key={type}
+                    className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsTradeModalOpen(true)}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                  >
+                    Buy
+                  </button>
+                  <button
+                    onClick={() => setIsTradeModalOpen(true)}
+                    className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                  >
+                    Sell
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Quantity</label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  <div className="flex gap-2 mt-2">
+                    {[25, 50, 75, 100].map((percent) => (
+                      <button
+                        key={percent}
+                        className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded text-gray-300 hover:bg-gray-700"
+                      >
+                        {percent}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Total</span>
+                    <span className="text-white">$0.00</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Estimated Fee</span>
+                    <span className="text-gray-400">$0.00</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Available Balance</span>
+                    <span className="text-gray-400">$0.00</span>
+                  </div>
+                </div>
+
                 <button
                   onClick={() => setIsTradeModalOpen(true)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
                 >
-                  Buy
-                </button>
-                <button
-                  onClick={() => setIsTradeModalOpen(true)}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-                >
-                  Sell
+                  Buy {selectedSymbol.replace('USDT', '')}
                 </button>
               </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Quantity</label>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-                <div className="flex gap-2 mt-2">
-                  {[25, 50, 75, 100].map((percent) => (
-                    <button
-                      key={percent}
-                      className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded text-gray-300 hover:bg-gray-700"
-                    >
-                      {percent}%
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Total</span>
-                  <span className="text-white">$0.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Estimated Fee</span>
-                  <span className="text-gray-400">$0.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Available Balance</span>
-                  <span className="text-gray-400">$0.00</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsTradeModalOpen(true)}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-              >
-                Buy {selectedSymbol.replace('USDT', '')}
-              </button>
             </div>
           </div>
         </div>
@@ -352,3 +355,5 @@ export default function Trade() {
     </div>
   )
 }
+
+
