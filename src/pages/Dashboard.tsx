@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ArrowUp, ArrowDown, Repeat, Zap } from 'lucide-react'
-import { tradeService, Trade } from '../services/tradeService'
+
 import { walletService, WalletBalance } from '../services/walletService'
 import { marketService, MarketData } from '../services/marketService'
 import { MarketCard } from '../components/MarketCard'
 import DashboardHero from '../components/DashboardHero'
 import { useAuth } from '../contexts/AuthContext'
 import FundPasswordModal from '../components/FundPasswordModal'
+import TransactionHistory from '../components/dashboard/TransactionHistory'
+import Portfolio from '../components/dashboard/Portfolio'
 
 
 const actionIcons: Record<string, JSX.Element> = {
@@ -18,7 +21,7 @@ const actionIcons: Record<string, JSX.Element> = {
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const [trades, setTrades] = useState<Trade[]>([])
+  const navigate = useNavigate()
   const [balances, setBalances] = useState<WalletBalance[]>([])
   const [marketData, setMarketData] = useState<MarketData[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,23 +42,29 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [tradesData, balancesData, marketDataData] = await Promise.all([
-        tradeService.getUserTrades(),
-        walletService.getBalances(),
-        marketService.getAllMarketData(),
-      ])
-      console.log('Market data received:', marketDataData)
-      setTrades(Array.isArray(tradesData) ? tradesData : [])
-      setBalances(Array.isArray(balancesData) ? balancesData : [])
-      // Sort by 24h change and keep top 8 for ticker/top markets
-      if (Array.isArray(marketDataData)) {
-        const sorted = [...marketDataData].sort((a, b) => b.change24h - a.change24h)
-        console.log('Sorted market data:', sorted)
-        setMarketData(sorted.slice(0, 8))
-      } else {
-        console.warn('Market data is not an array:', marketDataData)
-        setMarketData([])
+      // Fetch market data separately so it renders even if user data fails
+      try {
+        const marketDataData = await marketService.getAllMarketData()
+        console.log('Market data received:', marketDataData)
+        if (Array.isArray(marketDataData)) {
+          const sorted = [...marketDataData].sort((a, b) => b.change24h - a.change24h)
+          setMarketData(sorted.slice(0, 8))
+        } else {
+          console.warn('Market data is not an array:', marketDataData)
+          setMarketData([])
+        }
+      } catch (marketError) {
+        console.error('Failed to fetch market data:', marketError)
       }
+
+      // Fetch user data
+      try {
+        const balancesData = await walletService.getBalances()
+        setBalances(Array.isArray(balancesData) ? balancesData : [])
+      } catch (userError) {
+        console.error('Failed to fetch user data:', userError)
+      }
+
       setLoading(false)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
@@ -66,13 +75,6 @@ export default function Dashboard() {
   const totalBalance = balances.reduce((s, b) => s + b.balance, 0)
   const lockedBalance = balances.reduce((s, b) => s + (b.locked || 0), 0)
   const availableBalance = totalBalance - lockedBalance
-
-  // const wonTrades = trades.filter(t => t.status === 'WON').length
-  // const lostTrades = trades.filter(t => t.status === 'LOST').length
-  // const totalTrades = trades.length
-  // const winRate = totalTrades ? (wonTrades / totalTrades) * 100 : 0
-  // const totalProfit = trades.reduce((s, t) => s + (t.profit || 0), 0)
-  const recentTrades = trades.slice(0, 5)
 
   if (loading) {
     return (
@@ -214,11 +216,14 @@ export default function Dashboard() {
         </div>
 
 
-        {/* ACTIONS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 my-6 md:my-10 lg:my-20">
           {['Deposit', 'Trade', 'Withdraw', 'Demo'].map(a => (
             <button
               key={a}
+              onClick={() => {
+                if (a === 'Trade') navigate('/app/trade')
+                // For SPA navigation use useNavigate if available, but window.location works too
+              }}
               className="flex items-center justify-center border-[1px] border-transparent py-3 md:py-4 rounded-xl hover:bg-yellow-400/10  hover:border-yellow-300 hover:shadow-[0_0_15px_rgba(250,204,21,0.4)] transition text-sm md:text-base"
             >
               {actionIcons[a]}
@@ -227,28 +232,27 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* NEW SECTIONS: PORTFOLIO & HISTORY */}
+        <div className="grid lg:grid-cols-3 gap-6 my-10">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">Transaction History</h2>
+              <button className="text-sm text-cyan-400 hover:text-cyan-300">View All</button>
+            </div>
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+              <TransactionHistory />
+            </div>
+          </div>
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-white">Portfolio Allocation</h2>
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 h-full">
+              <Portfolio />
+            </div>
+          </div>
+        </div>
+
         {/* LISTS */}
         <div className="grid lg:grid-cols-2 gap-4 md:gap-6 mt-6 md:mt-10">
-
-          {/* RECENT TRADES */}
-          <div className="space-y-3">
-            <h2 className="text-lg md:text-xl font-semibold text-cyan-300">Recent Trades</h2>
-            {recentTrades.map(t => (
-              <div key={t.id} className="flex justify-between px-3 md:px-4 py-3 border border-gray-700 rounded-lg bg-black/40">
-                <div>
-                  <p className="font-medium text-sm md:text-base">{t.asset}</p>
-                  <p className="text-xs text-gray-500">{new Date(t.createdAt).toLocaleString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm md:text-base">{t.amount} USDT</p>
-                  <p className={`text-xs ${t.status === 'WON' ? 'text-green-400' : t.status === 'LOST' ? 'text-red-400' : 'text-yellow-400'}`}>
-                    {t.status}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* TOP MARKETS */}
           <div className="space-y-3">
             <h2 className="text-lg md:text-xl font-semibold text-cyan-300">Top Markets</h2>
@@ -271,6 +275,7 @@ export default function Dashboard() {
 
         </div>
       </div>
+
 
       {/* Fund Password Modal */}
       <FundPasswordModal

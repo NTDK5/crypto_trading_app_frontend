@@ -3,8 +3,7 @@ import { binanceService, BinanceTicker, BinanceOrderBook, CandlestickData } from
 import MarketList from '../components/MarketList'
 import OrderBook from '../components/OrderBook'
 import CandlestickChart from '../components/CandlestickChart'
-import TradeModal from '../components/TradeModal'
-import { tradeService, Trade as TradeType } from '../services/tradeService'
+import TradePanel from '../components/trading/TradePanel'
 
 const TIMEFRAMES = [
   { label: '1m', value: '1m' },
@@ -27,8 +26,7 @@ export default function Trade() {
   const [priceChange24h, setPriceChange24h] = useState(0)
   const [high24h, setHigh24h] = useState(0)
   const [low24h, setLow24h] = useState(0)
-  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false)
-  const [_activeTrade, setActiveTrade] = useState<TradeType | null>(null)
+
   const [ma7, setMa7] = useState(0)
   const [ma14, setMa14] = useState(0)
   const [ma28, setMa28] = useState(0)
@@ -71,14 +69,7 @@ export default function Trade() {
     }
   }, [selectedSymbol, timeframe])
 
-  // Check for active trades
-  useEffect(() => {
-    fetchActiveTrade()
-    const tradeInterval = setInterval(() => {
-      fetchActiveTrade()
-    }, 2000)
-    return () => clearInterval(tradeInterval)
-  }, [])
+
 
   const fetchAllMarkets = async () => {
     try {
@@ -135,17 +126,7 @@ export default function Trade() {
     }
   }
 
-  const fetchActiveTrade = async () => {
-    try {
-      const trades = await tradeService.getUserTrades()
-      const openTrade = trades.find(
-        (t) => t.status === 'OPEN' || t.status === 'PENDING'
-      )
-      setActiveTrade(openTrade || null)
-    } catch (error) {
-      console.error('Failed to fetch active trade:', error)
-    }
-  }
+
 
   const formatPrice = (price: number) => {
     if (price >= 1) {
@@ -257,9 +238,9 @@ export default function Trade() {
           </div>
 
           {/* Right Panel - Order Book and Trading */}
-          <div className="w-full lg:w-80 lg:flex-shrink-0 flex flex-col border-t border-gray-800 lg:border-t-0 lg:border-l">
+          <div className="w-full lg:w-80 lg:flex-shrink-0  flex flex-col border-t border-gray-800 lg:border-t-0 lg:border-l">
             {/* Order Book */}
-            <div className="flex-1 overflow-y-auto max-h-80 lg:max-h-none">
+            <div className="flex-1 max-h-content">
               <OrderBook
                 orderBook={orderBook}
                 grouping={grouping}
@@ -268,88 +249,13 @@ export default function Trade() {
             </div>
 
             {/* Trading Interface */}
-            <div className="p-4 bg-gray-900 border-t border-gray-800">
-              <div className="flex gap-2 mb-4 border-b border-gray-700">
-                {['Market', 'Limit', 'Stop', 'Stop Limit'].map((type) => (
-                  <button
-                    key={type}
-                    className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsTradeModalOpen(true)}
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-                  >
-                    Buy
-                  </button>
-                  <button
-                    onClick={() => setIsTradeModalOpen(true)}
-                    className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-                  >
-                    Sell
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Quantity</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <div className="flex gap-2 mt-2">
-                    {[25, 50, 75, 100].map((percent) => (
-                      <button
-                        key={percent}
-                        className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded text-gray-300 hover:bg-gray-700"
-                      >
-                        {percent}%
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Total</span>
-                    <span className="text-white">$0.00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Estimated Fee</span>
-                    <span className="text-gray-400">$0.00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Available Balance</span>
-                    <span className="text-gray-400">$0.00</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsTradeModalOpen(true)}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-                >
-                  Buy {selectedSymbol.replace('USDT', '')}
-                </button>
-              </div>
+            <div className="bg-gray-900 flex-1 mt-20 border-t border-gray-800" style={{ height: '500px' }}>
+              <TradePanel initialAsset={selectedSymbol.replace('USDT', '')} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Trade Modal */}
-      <TradeModal
-        isOpen={isTradeModalOpen}
-        onClose={() => setIsTradeModalOpen(false)}
-        selectedAsset={selectedSymbol}
-        currentPrice={currentPrice}
-        onTradeSuccess={fetchActiveTrade}
-      />
     </div>
   )
 }

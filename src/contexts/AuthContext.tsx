@@ -4,9 +4,9 @@ import { authService, AuthResponse } from '../services/authService'
 interface AuthContextType {
   user: AuthResponse['user'] | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<AuthResponse['user']>
   register: (name: string, email: string, password: string) => Promise<void>
-  googleLogin: (idToken: string) => Promise<void>
+  googleLogin: (idToken: string) => Promise<AuthResponse['user']>
   logout: () => Promise<void>
   isAuthenticated: boolean
   refreshUser: () => Promise<void>
@@ -21,7 +21,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('accessToken')
-    
+
       if (token) {
         try {
           // Try to fetch fresh user profile
@@ -43,36 +43,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
       }
-    
+
       setLoading(false)
     }
 
     initAuth()
   }, [])
-  
+
 
   const login = async (email: string, password: string) => {
     const response = await authService.login({ email, password })
-    localStorage.setItem('accessToken', response.accessToken)
-    localStorage.setItem('refreshToken', response.refreshToken)
+    const accessToken = response.accessToken.replace(/^["']|["']$/g, '')
+    const refreshToken = response.refreshToken.replace(/^["']|["']$/g, '')
+
+    localStorage.setItem('accessToken', accessToken)
+    localStorage.setItem('refreshToken', refreshToken)
     localStorage.setItem('user', JSON.stringify(response.user))
     setUser(response.user)
+    return response.user
   }
 
   const register = async (name: string, email: string, password: string) => {
     const response = await authService.register({ name, email, password })
-    localStorage.setItem('accessToken', response.accessToken)
-    localStorage.setItem('refreshToken', response.refreshToken)
+    const accessToken = response.accessToken.replace(/^["']|["']$/g, '')
+    const refreshToken = response.refreshToken.replace(/^["']|["']$/g, '')
+
+    localStorage.setItem('accessToken', accessToken)
+    localStorage.setItem('refreshToken', refreshToken)
     localStorage.setItem('user', JSON.stringify(response.user))
     setUser(response.user)
   }
 
   const googleLogin = async (idToken: string) => {
     const response = await authService.googleLogin(idToken)
-    localStorage.setItem('accessToken', response.accessToken)
-    localStorage.setItem('refreshToken', response.refreshToken)
+    const accessToken = response.accessToken.replace(/^["']|["']$/g, '')
+    const refreshToken = response.refreshToken.replace(/^["']|["']$/g, '')
+
+    localStorage.setItem('accessToken', accessToken)
+    localStorage.setItem('refreshToken', refreshToken)
     localStorage.setItem('user', JSON.stringify(response.user))
     setUser(response.user)
+    return response.user
   }
 
   const refreshUser = async () => {

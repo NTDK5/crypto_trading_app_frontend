@@ -10,6 +10,12 @@ import Wallet from './pages/Wallet'
 import Market from './pages/Market'
 import Settings from './pages/Settings'
 import Layout from './components/Layout'
+import AdminLayout from './components/AdminLayout'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminUsers from './pages/AdminUsers'
+import AdminTransactions from './pages/AdminTransactions'
+import AdminSettings from './pages/AdminSettings'
+import { AdminRoute } from './components/AdminRoute'
 
 function App() {
   return (
@@ -19,6 +25,22 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="transactions" element={<AdminTransactions />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
           <Route
             path="/app"
             element={

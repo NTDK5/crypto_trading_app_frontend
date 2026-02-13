@@ -14,16 +14,20 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const { login, googleLogin, isAuthenticated } = useAuth()
+  const { login, googleLogin, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const googleButtonRef = useRef<HTMLDivElement>(null)
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/app/dashboard', { replace: true })
+    if (isAuthenticated && user) {
+      if (user.role === 'SUPER_ADMIN') {
+        navigate('/admin', { replace: true })
+      } else {
+        navigate('/app/dashboard', { replace: true })
+      }
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, user, navigate])
 
   // Load Google OAuth script
   useEffect(() => {
@@ -60,9 +64,14 @@ export default function Login() {
     setError('')
 
     try {
-      await googleLogin(response.credential)
+      const user = await googleLogin(response.credential)
       setTimeout(() => {
-        navigate('/app/dashboard', { replace: true })
+        console.log('Google Login success, user:', user)
+        if (user.role === 'superadmin' || user.role === 'SUPER_ADMIN') {
+          navigate('/admin', { replace: true })
+        } else {
+          navigate('/app/dashboard', { replace: true })
+        }
       }, 100)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to sign in with Google. Please try again.')
@@ -76,10 +85,16 @@ export default function Login() {
     setLoading(true)
 
     try {
-      await login(email, password)
+      const user = await login(email, password)
       // Navigate after state has been updated
       setTimeout(() => {
-        navigate('/app/dashboard', { replace: true })
+        console.log('Login success, user:', user)
+        if (user.role === 'superadmin' || user.role === 'SUPER_ADMIN') {
+          navigate('/admin', { replace: true })
+        } else {
+          console.log('Redirecting to app, role is', user.role)
+          navigate('/app/dashboard', { replace: true })
+        }
       }, 100)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to login. Please try again.')
