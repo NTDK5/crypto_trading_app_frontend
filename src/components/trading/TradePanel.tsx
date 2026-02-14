@@ -285,7 +285,7 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl h-full flex flex-col">
             {/* Tabs */}
             <div className="flex gap-2 p-2 border-b border-gray-800 overflow-x-auto sm:overflow-visible">
-  {['spot', 'binary'].map(tab => (
+  {(['spot', 'binary'] as const).map(tab => (
     <button
       key={tab}
       onClick={() => setActiveTab(tab)}
