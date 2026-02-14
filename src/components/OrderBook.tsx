@@ -48,8 +48,8 @@ export default function OrderBook({ orderBook, grouping, onGroupingChange }: Ord
   }, 0)
 
   return (
-    <div className="h-full flex flex-col bg-gray-900">
-      <div className="p-4 border-b border-gray-800">
+    <div className="h-full flex flex-col bg-gray-900 overflow-hidden">
+      <div className="flex-shrink-0 p-4 border-b border-gray-800">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-white">Order Book</h2>
           <select
@@ -66,7 +66,7 @@ export default function OrderBook({ orderBook, grouping, onGroupingChange }: Ord
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Asks (Sell Orders) */}
         <div className="px-4">
           {asks.map((ask, index) => {

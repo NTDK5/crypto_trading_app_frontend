@@ -47,5 +47,35 @@ export const spotTradeService = {
     async getStopOrders(symbol?: string): Promise<any[]> {
         const response = await api.get<{ success: boolean; data: any[] }>('/spot/stop-orders', { params: { symbol } })
         return response.data.data
+    },
+
+    async placeLimitOrder(data: { symbol: string, side: 'BUY' | 'SELL', quantity: number, limitPrice: number }): Promise<any> {
+        const response = await api.post<{ success: boolean; data: any }>('/spot/limit-order', data)
+        return response.data.data
+    },
+
+    async cancelLimitOrder(id: string): Promise<any> {
+        const response = await api.delete<{ success: boolean; message: string; data: any }>(`/spot/limit-order/${id}`)
+        return response.data.data
+    },
+
+    async getLimitOrders(symbol?: string): Promise<any[]> {
+        const response = await api.get<{ success: boolean; data: any[] }>('/spot/limit-orders', { params: { symbol } })
+        return response.data.data
+    },
+
+    async placeStopLimitOrder(data: { symbol: string, side: 'BUY' | 'SELL', quantity: number, stopPrice: number, limitPrice: number }): Promise<any> {
+        const response = await api.post<{ success: boolean; data: any }>('/spot/stop-limit-order', data)
+        return response.data.data
+    },
+
+    async cancelStopLimitOrder(id: string): Promise<any> {
+        const response = await api.delete<{ success: boolean; message: string; data: any }>(`/spot/stop-limit-order/${id}`)
+        return response.data.data
+    },
+
+    async getStopLimitOrders(symbol?: string): Promise<any[]> {
+        const response = await api.get<{ success: boolean; data: any[] }>('/spot/stop-limit-orders', { params: { symbol } })
+        return response.data.data
     }
 }
