@@ -53,9 +53,14 @@ export default function Portfolio() {
                             paddingAngle={5}
                             dataKey="value"
                         >
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0.5)" />
-                            ))}
+                       {data.map((_, index) => (
+                        <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                            stroke="rgba(0,0,0,0.5)" 
+                        />
+                        ))}
+
                         </Pie>
                         <Tooltip
                             contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', borderRadius: '0.5rem', color: '#F3F4F6' }}

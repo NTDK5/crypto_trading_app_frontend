@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { adminService, AdminTransaction } from '../services/adminService'
-import { Search, Check, X, Clock, ArrowDownLeft, ArrowUpRight, History } from 'lucide-react'
+import { Check, X,  ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 
 export default function AdminTransactions() {
     const [activeTab, setActiveTab] = useState<'DEPOSITS' | 'WITHDRAWALS' | 'HISTORY'>('DEPOSITS')
