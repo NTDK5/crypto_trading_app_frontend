@@ -14,7 +14,10 @@ import AdminLayout from './components/AdminLayout'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
 import AdminTransactions from './pages/AdminTransactions'
-import AdminSettings from './pages/AdminSettings'
+import AdminTrades from './pages/AdminTrades'
+import AdminRisk from './pages/AdminRisk'
+import AdminConfig from './pages/AdminConfig'
+import AdminAuditLog from './pages/AdminAuditLog'
 import { AdminRoute } from './components/AdminRoute'
 
 function App() {
@@ -39,7 +42,10 @@ function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="transactions" element={<AdminTransactions />} />
-            <Route path="settings" element={<AdminSettings />} />
+            <Route path="trades" element={<AdminTrades />} />
+            <Route path="risk" element={<AdminRisk />} />
+            <Route path="config" element={<AdminConfig />} />
+            <Route path="audit-log" element={<AdminAuditLog />} />
           </Route>
           <Route
             path="/app"

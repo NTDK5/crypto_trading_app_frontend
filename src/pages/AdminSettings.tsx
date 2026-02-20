@@ -19,9 +19,8 @@ export default function AdminSettings() {
             }, {})
             setConfig(configMap)
             setTradingPaused(configMap['SPOT_TRADING_ENABLED'] === 'false')
-        } catch (error) {
-            console.error('Failed to fetch config:', error)
-        } finally {
+        } catch { }
+        finally {
             setLoading(false)
         }
     }
@@ -41,8 +40,7 @@ export default function AdminSettings() {
                 await adminService.pauseTrading()
             }
             fetchConfig() // Refresh state
-        } catch (error) {
-            console.error('Failed to toggle trading:', error)
+        } catch {
             alert('Failed to update trading status')
         }
     }
@@ -53,8 +51,7 @@ export default function AdminSettings() {
             await adminService.updateSystemConfig(key, value)
             alert('Configuration updated')
             fetchConfig()
-        } catch (error) {
-            console.error('Failed to update config:', error)
+        } catch {
             alert('Failed to update configuration')
         }
     }
@@ -84,8 +81,8 @@ export default function AdminSettings() {
                     <button
                         onClick={handleTradingToggle}
                         className={`px-4 py-2 rounded-lg font-medium flex items-center transition-colors ${tradingPaused
-                                ? 'bg-green-600 hover:bg-green-700 text-white'
-                                : 'bg-red-600 hover:bg-red-700 text-white'
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-red-600 hover:bg-red-700 text-white'
                             }`}
                     >
                         {tradingPaused ? (
