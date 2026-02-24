@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { createChart, IChartApi, ISeriesApi, ColorType, Time } from 'lightweight-charts'
+import { createChart, IChartApi, ISeriesApi, ColorType, Time, AreaSeries } from 'lightweight-charts'
 
 interface TradingChartProps {
   data: Array<{ time: number; value: number }>
@@ -15,132 +15,66 @@ export default function TradingChart({ data, color = '#00d4ff', height = 400 }: 
   useEffect(() => {
     if (!chartContainerRef.current) return
 
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    const container = chartContainerRef.current
 
-    // Wait for container to have dimensions
-    const initChart = () => {
-      if (!chartContainerRef.current) return
-
-      const container = chartContainerRef.current
-      // Ensure minimum width
-      const width = Math.max(container.clientWidth || 800, 100)
-
-      // Create chart
-      const chart = createChart(container, {
-        layout: {
-          background: { type: ColorType.Solid, color: 'transparent' },
-          textColor: '#9ca3af',
-        },
-        grid: {
-          vertLines: {
-            color: '#1f2937',
-            style: 1,
-          },
-          horzLines: {
-            color: '#1f2937',
-            style: 1,
-          },
-        },
-        width: width,
-        height: height,
-        timeScale: {
-          timeVisible: true,
-          secondsVisible: false,
-          borderColor: '#374151',
-        },
-        rightPriceScale: {
-          borderColor: '#374151',
-        },
-      })
-
-      // Verify chart object is valid
-      if (!chart || typeof chart !== 'object') {
-        console.error('Chart creation failed: invalid chart object')
-        return
-      }
-
-      chartRef.current = chart
-
-      // Add area series - use type assertion for compatibility
-      try {
-        const chartAny = chart as any
-        
-        // Try addAreaSeries first (if available in this version)
-        let areaSeries: ISeriesApi<'Area'> | null = null
-        
-        if (typeof chartAny.addAreaSeries === 'function') {
-          areaSeries = chartAny.addAreaSeries({
-            lineColor: color,
-            topColor: color + '40',
-            bottomColor: color + '05',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: true,
-          })
-        } else if (typeof chartAny.addSeries === 'function') {
-          // Fallback: use addSeries with proper typing
-          const seriesDef = {
-            seriesType: 'Area' as const,
-            options: {
-              lineColor: color,
-              topColor: color + '40',
-              bottomColor: color + '05',
-              lineWidth: 2,
-              priceLineVisible: false,
-              lastValueVisible: true,
-            },
-          }
-          areaSeries = chartAny.addSeries(seriesDef) as ISeriesApi<'Area'>
-        }
-
-        if (areaSeries) {
-          seriesRef.current = areaSeries
-
-          // Set data - convert time to proper format
-          if (data.length > 0) {
-            const formattedData = data.map((point) => ({
-              time: point.time as Time,
-              value: point.value,
-            }))
-            areaSeries.setData(formattedData)
-          }
-        }
-      } catch (error) {
-        console.error('Error adding area series:', error)
-      }
-    }
-
-    // Initialize chart - use requestAnimationFrame to ensure DOM is ready
-    const rafId = requestAnimationFrame(() => {
-      if (chartContainerRef.current) {
-        if (chartContainerRef.current.clientWidth > 0) {
-          initChart()
-        } else {
-          // If still no width, wait a bit more
-          timeoutId = setTimeout(() => {
-            initChart()
-          }, 100)
-        }
-      }
+    // Initialize chart
+    const chart = createChart(container, {
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#9ca3af',
+      },
+      grid: {
+        vertLines: { color: '#1f2937' },
+        horzLines: { color: '#1f2937' },
+      },
+      width: container.clientWidth,
+      height: height,
+      timeScale: {
+        timeVisible: true,
+        borderColor: '#374151',
+      },
+      rightPriceScale: {
+        borderColor: '#374151',
+        autoScale: true,
+      },
     })
 
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        })
-      }
+    const areaSeries = chart.addSeries(AreaSeries, {
+      lineColor: color,
+      topColor: color + '40',
+      bottomColor: color + '05',
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    })
+
+    chartRef.current = chart
+    seriesRef.current = areaSeries
+
+    // Set initial data
+    if (data.length > 0) {
+      const sortedData = [...data].sort((a, b) => a.time - b.time)
+      const formattedData = sortedData.map((point) => ({
+        time: point.time as Time,
+        value: point.value,
+      }))
+      areaSeries.setData(formattedData)
+
+      // Fitting content to zoom in and show all data
+      chart.timeScale().fitContent()
     }
 
-    window.addEventListener('resize', handleResize)
+    // Handle resize with ResizeObserver
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (entries.length === 0 || !chartRef.current) return
+      const { width } = entries[0].contentRect
+      chartRef.current.applyOptions({ width })
+    })
+
+    resizeObserver.observe(container)
 
     return () => {
-      cancelAnimationFrame(rafId)
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-      window.removeEventListener('resize', handleResize)
+      resizeObserver.disconnect()
       if (chartRef.current) {
         chartRef.current.remove()
         chartRef.current = null
@@ -151,16 +85,20 @@ export default function TradingChart({ data, color = '#00d4ff', height = 400 }: 
 
   useEffect(() => {
     if (seriesRef.current && data.length > 0) {
-      const formattedData = data.map((point) => ({
+      const sortedData = [...data].sort((a, b) => a.time - b.time)
+      const formattedData = sortedData.map((point) => ({
         time: point.time as Time,
         value: point.value,
       }))
       seriesRef.current.setData(formattedData)
+      if (chartRef.current) {
+        chartRef.current.timeScale().fitContent()
+      }
     }
   }, [data])
 
   return (
-    <div className="w-full" ref={chartContainerRef} style={{ height: `${height}px` }} />
+    <div className="w-full relative" ref={chartContainerRef} style={{ height: `${height}px` }} />
   )
 }
 

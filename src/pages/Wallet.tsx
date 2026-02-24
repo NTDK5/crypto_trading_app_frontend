@@ -185,7 +185,7 @@ export default function Wallet() {
               <div className="text-sm text-gray-400">Today's P&L</div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <p className="text-gray-400 text-sm mb-2">Available</p>
                 <p className="text-2xl font-bold text-white mb-1">
@@ -201,7 +201,7 @@ export default function Wallet() {
                   </p>
                   <p className="text-gray-500 text-xs">USD balance from deposits</p>
                 </div>
-                <ArrowRight className="w-5 h-5 text-gray-400" />
+                <ArrowRight className="w-5 h-5 text-gray-400 hidden sm:block" />
               </div>
             </div>
           </div>

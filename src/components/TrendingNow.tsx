@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ArrowUpRight, ArrowDownRight, Flame } from 'lucide-react'
 import { useCryptoWebSocket } from '../hooks/useCryptoWebSocket'
 
-
-
 export default function TrendingNow() {
+  const navigate = useNavigate()
   const { cryptoData, loading } = useCryptoWebSocket({ useWebSocket: true })
 
   const trending = useMemo(() => {
@@ -41,12 +41,17 @@ export default function TrendingNow() {
         <h2 className="text-xl font-bold text-white">🔥 Trending Now</h2>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {trending.map((crypto) => {
+        {trending.map((crypto: any) => {
           const isPositive = crypto.price_change_percentage_24h >= 0
           return (
             <div
               key={crypto.id}
-              className="bg-gray-800/50 rounded-xl p-5 hover:bg-gray-800/70 transition-all hover:scale-105 border border-gray-700/50 hover:border-cyan-500/50"
+              onClick={() => {
+                const symbol = crypto.symbol.toUpperCase()
+                const tradeSymbol = symbol.endsWith('USDT') ? symbol : `${symbol}USDT`
+                navigate(`/app/trade?symbol=${tradeSymbol}`)
+              }}
+              className="bg-gray-800/50 rounded-xl p-5 hover:bg-gray-800/70 transition-all hover:scale-105 border border-gray-700/50 hover:border-cyan-500/50 cursor-pointer group"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm mb-3">
@@ -55,9 +60,8 @@ export default function TrendingNow() {
                 <div className="text-white font-semibold mb-2">{crypto.symbol.toUpperCase()}</div>
                 <div className="text-white font-bold text-lg mb-2">${formatPrice(crypto.current_price)}</div>
                 <div
-                  className={`inline-flex items-center gap-1 text-sm font-semibold ${
-                    isPositive ? 'text-green-400' : 'text-red-400'
-                  }`}
+                  className={`inline-flex items-center gap-1 text-sm font-semibold ${isPositive ? 'text-green-400' : 'text-red-400'
+                    }`}
                 >
                   {isPositive ? (
                     <ArrowUpRight className="w-4 h-4" />

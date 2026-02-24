@@ -6,15 +6,21 @@ import { spotTradeService } from '../../services/spotTradeService'
 import { walletService } from '../../services/walletService'
 
 interface TradePanelProps {
+    symbol?: string
     initialAsset?: string
 }
 
 // Default fee rate (0.2% = 0.002) - client-side calculation only
 const DEFAULT_FEE_RATE = 0.002
 
-export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
+export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }: TradePanelProps) {
     const [activeTab, setActiveTab] = useState<'spot' | 'binary'>('spot')
-    const [asset] = useState(initialAsset)
+
+    // Determine initial symbol and asset
+    const initialSymbol = propSymbol || `${initialAsset}USDT`
+    const [symbol] = useState(initialSymbol)
+    const [asset] = useState(propSymbol ? propSymbol.replace('USDT', '') : initialAsset)
+
     const [price, setPrice] = useState(0)
     const [balance, setBalance] = useState(0)
     const [baseBalance, setBaseBalance] = useState(0) // Balance in base asset (BTC, ETH, etc.)
@@ -37,8 +43,6 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
 
     const [loading, setLoading] = useState(false)
     const [msg, setMsg] = useState({ type: '', text: '' })
-
-    const symbol = `${asset}USDT`
 
     // Auto-update price field when market price changes (for Limit/Stop-Limit orders)
     useEffect(() => {
@@ -109,8 +113,8 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
         const amount = parseFloat(spotAmount) || 0
         const currentPriceValue = price || 0
         // Use limit price if available, otherwise use market price
-        const priceValue = orderType === 'MARKET' 
-            ? currentPriceValue 
+        const priceValue = orderType === 'MARKET'
+            ? currentPriceValue
             : (parseFloat(limitPrice) || currentPriceValue)
 
         let total = 0
@@ -285,45 +289,44 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl h-full flex flex-col">
             {/* Tabs */}
             <div className="flex gap-2 p-2 border-b border-gray-800 overflow-x-auto sm:overflow-visible">
-  {(['spot', 'binary'] as const).map(tab => (
-    <button
-      key={tab}
-      onClick={() => setActiveTab(tab)}
-      className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition
+                {(['spot', 'binary'] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition
         ${activeTab === tab
-          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-black'
-          : 'bg-gray-800 text-gray-400 hover:text-white'}
+                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-black'
+                                : 'bg-gray-800 text-gray-400 hover:text-white'}
       `}
-    >
-      {tab === 'spot' ? 'Spot Trading' : 'Binary'}
-    </button>
-  ))}
-</div>
+                    >
+                        {tab === 'spot' ? 'Spot Trading' : 'Binary'}
+                    </button>
+                ))}
+            </div>
 
 
             <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-            <div className="flex flex-col gap-3 mb-6">
-                <div className="flex flex-col gap-2">
-                    <span className="text-xl sm:text-2xl font-bold text-white">
-                    {asset}/USDT
-                    </span>
-                    <span className="text-lg text-yellow-400 font-mono">
-                    ${price.toFixed(2)}
-                    </span>
-                </div>
+                <div className="flex flex-col gap-3 mb-6">
+                    <div className="flex flex-col gap-2">
+                        <span className="text-xl sm:text-2xl font-bold text-white">
+                            {asset}/USDT
+                        </span>
+                        <span className="text-lg text-yellow-400 font-mono">
+                            ${price.toFixed(2)}
+                        </span>
+                    </div>
 
-                <div className="text-xs text-gray-400">
-                    Balance: <span className="text-cyan-400">{balance.toFixed(2)} USDT</span>
-                </div>
+                    <div className="text-xs text-gray-400">
+                        Balance: <span className="text-cyan-400">{balance.toFixed(2)} USDT</span>
+                    </div>
                 </div>
 
 
                 {msg.text && (
-                    <div className={`mb-4 p-3 rounded-lg text-sm ${
-                        msg.type === 'success' 
-                            ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                    }`}>
+                    <div className={`mb-4 p-3 rounded-lg text-sm ${msg.type === 'success'
+                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        }`}>
                         {msg.text}
                     </div>
                 )}
@@ -336,11 +339,10 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                                 <button
                                     key={type}
                                     onClick={() => setOrderType(type)}
-                                    className={`py-1.5 rounded-md font-medium transition relative ${
-                                        orderType === type 
-                                            ? 'bg-gray-800 text-cyan-400' 
-                                            : 'text-gray-500 hover:text-gray-300'
-                                    }`}
+                                    className={`py-1.5 rounded-md font-medium transition relative ${orderType === type
+                                        ? 'bg-gray-800 text-cyan-400'
+                                        : 'text-gray-500 hover:text-gray-300'
+                                        }`}
                                     style={orderType === type ? {
                                         boxShadow: '0 0 8px rgba(34, 211, 238, 0.4)',
                                     } : {}}
@@ -354,11 +356,10 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                         <div className="flex bg-gray-950 rounded-lg p-1">
                             <button
                                 onClick={() => setSpotSide('BUY')}
-                                className={`flex-1 py-3 rounded-md font-bold transition relative ${
-                                    spotSide === 'BUY' 
-                                        ? 'bg-green-600 text-white' 
-                                        : 'text-gray-500 hover:text-gray-300'
-                                }`}
+                                className={`flex-1 py-3 rounded-md font-bold transition relative ${spotSide === 'BUY'
+                                    ? 'bg-green-600 text-white'
+                                    : 'text-gray-500 hover:text-gray-300'
+                                    }`}
                                 style={spotSide === 'BUY' ? {
                                     boxShadow: '0 0 15px rgba(34, 197, 94, 0.5)',
                                 } : {}}
@@ -367,11 +368,10 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                             </button>
                             <button
                                 onClick={() => setSpotSide('SELL')}
-                                className={`flex-1 py-3 rounded-md font-bold transition relative ${
-                                    spotSide === 'SELL' 
-                                        ? 'bg-red-600 text-white' 
-                                        : 'text-gray-500 hover:text-gray-300'
-                                }`}
+                                className={`flex-1 py-3 rounded-md font-bold transition relative ${spotSide === 'SELL'
+                                    ? 'bg-red-600 text-white'
+                                    : 'text-gray-500 hover:text-gray-300'
+                                    }`}
                                 style={spotSide === 'SELL' ? {
                                     boxShadow: '0 0 15px rgba(239, 68, 68, 0.5)',
                                 } : {}}
@@ -396,13 +396,12 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                                         }
                                     }}
                                     disabled={orderType === 'MARKET' || orderType === 'STOP'}
-                                    className={`w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition ${
-                                        orderType === 'MARKET' || orderType === 'STOP' ? 'opacity-60 cursor-not-allowed' : ''
-                                    }`}
+                                    className={`w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition ${orderType === 'MARKET' || orderType === 'STOP' ? 'opacity-60 cursor-not-allowed' : ''
+                                        }`}
                                     placeholder={price.toFixed(2)}
                                     style={{
-                                        boxShadow: (orderType === 'LIMIT' || orderType === 'STOP_LIMIT') && limitPrice 
-                                            ? '0 0 8px rgba(34, 211, 238, 0.2)' 
+                                        boxShadow: (orderType === 'LIMIT' || orderType === 'STOP_LIMIT') && limitPrice
+                                            ? '0 0 8px rgba(34, 211, 238, 0.2)'
                                             : 'none',
                                     }}
                                 />
@@ -517,14 +516,13 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                         <button
                             onClick={handleSpotTrade}
                             disabled={loading || !isFormValid}
-                            className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition relative disabled:opacity-50 disabled:cursor-not-allowed ${
-                                spotSide === 'BUY'
-                                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400'
-                                    : 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400'
-                            }`}
+                            className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition relative disabled:opacity-50 disabled:cursor-not-allowed ${spotSide === 'BUY'
+                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400'
+                                : 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400'
+                                }`}
                             style={!loading && isFormValid ? {
-                                boxShadow: spotSide === 'BUY' 
-                                    ? '0 0 20px rgba(34, 197, 94, 0.6)' 
+                                boxShadow: spotSide === 'BUY'
+                                    ? '0 0 20px rgba(34, 197, 94, 0.6)'
                                     : '0 0 20px rgba(239, 68, 68, 0.6)',
                             } : {}}
                         >
@@ -620,11 +618,10 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                         <div className="grid grid-cols-2 gap-4">
                             <button
                                 onClick={() => setBinaryDirection('UP')}
-                                className={`p-4 rounded-xl border-2 transition ${
-                                    binaryDirection === 'UP'
-                                        ? 'border-green-500 bg-green-500/10 text-green-400'
-                                        : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
-                                }`}
+                                className={`p-4 rounded-xl border-2 transition ${binaryDirection === 'UP'
+                                    ? 'border-green-500 bg-green-500/10 text-green-400'
+                                    : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
+                                    }`}
                                 style={binaryDirection === 'UP' ? {
                                     boxShadow: '0 0 15px rgba(34, 197, 94, 0.3)',
                                 } : {}}
@@ -634,11 +631,10 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                             </button>
                             <button
                                 onClick={() => setBinaryDirection('DOWN')}
-                                className={`p-4 rounded-xl border-2 transition ${
-                                    binaryDirection === 'DOWN'
-                                        ? 'border-red-500 bg-red-500/10 text-red-400'
-                                        : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
-                                }`}
+                                className={`p-4 rounded-xl border-2 transition ${binaryDirection === 'DOWN'
+                                    ? 'border-red-500 bg-red-500/10 text-red-400'
+                                    : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
+                                    }`}
                                 style={binaryDirection === 'DOWN' ? {
                                     boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)',
                                 } : {}}
@@ -669,11 +665,10 @@ export default function TradePanel({ initialAsset = 'BTC' }: TradePanelProps) {
                                     <button
                                         key={d}
                                         onClick={() => setBinaryDuration(d)}
-                                        className={`flex-1 py-2 rounded-lg text-sm border transition ${
-                                            binaryDuration === d 
-                                                ? 'border-purple-500 text-purple-400 bg-purple-500/10' 
-                                                : 'border-gray-800 text-gray-400 bg-gray-950'
-                                        }`}
+                                        className={`flex-1 py-2 rounded-lg text-sm border transition ${binaryDuration === d
+                                            ? 'border-purple-500 text-purple-400 bg-purple-500/10'
+                                            : 'border-gray-800 text-gray-400 bg-gray-950'
+                                            }`}
                                         style={binaryDuration === d ? {
                                             boxShadow: '0 0 10px rgba(168, 85, 247, 0.3)',
                                         } : {}}

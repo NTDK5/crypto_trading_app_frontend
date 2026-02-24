@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { binanceService, BinanceTicker, BinanceOrderBook, CandlestickData } from '../services/binanceService'
 import MarketList from '../components/MarketList'
 import OrderBook from '../components/OrderBook'
@@ -15,8 +16,11 @@ const TIMEFRAMES = [
 ]
 
 export default function Trade() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const initialSymbol = searchParams.get('symbol') || 'BTCUSDT'
   const [markets, setMarkets] = useState<BinanceTicker[]>([])
-  const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT')
+  const [selectedSymbol, setSelectedSymbol] = useState(initialSymbol)
   const [searchQuery, setSearchQuery] = useState('')
   const [orderBook, setOrderBook] = useState<BinanceOrderBook | null>(null)
   const [grouping, setGrouping] = useState('0.01')
@@ -148,15 +152,11 @@ export default function Trade() {
   // const selectedMarket = markets.find((m) => m.symbol === selectedSymbol)
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
-      {/* Main Content Area - Full height container */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel - Markets List */}
-        {/* 
-          Left panel: Fixed width, matches center height, independently scrollable
-          Height is constrained by parent flex container (h-screen)
-        */}
-        <div className="w-full lg:w-80 lg:flex-shrink-0 border-b border-gray-800 lg:border-b-0 lg:border-r flex flex-col overflow-hidden">
+    <div className="min-h-screen lg:h-screen bg-gray-900 text-white flex flex-col overflow-x-hidden lg:overflow-hidden">
+      {/* Main Content Area */}
+      <div className="flex flex-col lg:flex-row flex-1 overflow-x-hidden lg:overflow-hidden">
+        {/* Market List Panel */}
+        <div className="w-full lg:w-80 lg:flex-shrink-0 border-b border-gray-800 lg:border-b-0 lg:border-r flex flex-col h-[300px] lg:h-full">
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <MarketList
               markets={markets}
@@ -168,143 +168,97 @@ export default function Trade() {
           </div>
         </div>
 
-        {/* Center + Right Panels - Flex container */}
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-          {/* Center Panel - Chart and Price Info */}
-          {/* 
-            Center panel: Determines the height for left/right panels
-            Uses flex-1 to take available space
-          */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Price Display Header - Enhanced with neon design */}
-            <div className="flex-shrink-0 p-4 md:p-6 border-b border-gray-800 bg-gradient-to-b from-gray-900 to-gray-900 relative overflow-hidden">
-              {/* Subtle background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-baseline gap-3 mb-2">
-                      <h1 
-                        className="text-3xl md:text-4xl lg:text-5xl font-bold text-white"
-                        style={{
-                          textShadow: '0 0 20px rgba(34, 211, 238, 0.3), 0 0 40px rgba(34, 211, 238, 0.1)',
-                        }}
-                      >
-                        {formatPrice(currentPrice)}
-                      </h1>
-                      <span className="text-lg md:text-xl text-gray-500 font-mono">USD</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <p
-                        className={`text-sm md:text-base font-semibold px-3 py-1 rounded-lg ${
-                          priceChange24h >= 0 
-                            ? 'text-green-400 bg-green-500/10 border border-green-500/20' 
-                            : 'text-red-400 bg-red-500/10 border border-red-500/20'
-                        }`}
-                        style={priceChange24h >= 0 ? {
-                          boxShadow: '0 0 10px rgba(34, 197, 94, 0.2)',
-                        } : {
-                          boxShadow: '0 0 10px rgba(239, 68, 68, 0.2)',
-                        }}
-                      >
-                        {priceChange24h >= 0 ? '↑' : '↓'} {priceChange24h >= 0 ? '+' : ''}
-                        {priceChange24h.toFixed(2)}%
-                      </p>
-                      <p className="text-xs text-gray-500">24h</p>
-                    </div>
+        {/* Center Content: Chart and Price Info */}
+        <div className="flex-1 flex flex-col overflow-x-hidden lg:overflow-hidden border-b lg:border-b-0 border-gray-800">
+          {/* Price Display Header */}
+          <div className="flex-shrink-0 p-4 md:p-6 border-b border-gray-800 bg-gradient-to-b from-gray-900 to-gray-900 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
+
+            <div className="relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-3 mb-2">
+                    <h1
+                      className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white"
+                      style={{
+                        textShadow: '0 0 20px rgba(34, 211, 238, 0.3), 0 0 40px rgba(34, 211, 238, 0.1)',
+                      }}
+                    >
+                      {formatPrice(currentPrice)}
+                    </h1>
+                    <span className="text-sm sm:text-lg md:text-xl text-gray-500 font-mono">USD</span>
                   </div>
-                  
-                  {/* 24h Stats - Enhanced design */}
-                  <div className="flex gap-4 md:gap-6">
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500 mb-1">24h High</div>
-                      <div 
-                        className="text-sm md:text-base text-green-400 font-semibold"
-                        style={{
-                          textShadow: '0 0 8px rgba(34, 197, 94, 0.3)',
-                        }}
-                      >
-                        {formatPrice(high24h)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500 mb-1">24h Low</div>
-                      <div 
-                        className="text-sm md:text-base text-red-400 font-semibold"
-                        style={{
-                          textShadow: '0 0 8px rgba(239, 68, 68, 0.3)',
-                        }}
-                      >
-                        {formatPrice(low24h)}
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-4">
+                    <p
+                      className={`text-xs sm:text-sm md:text-base font-semibold px-2 py-1 rounded-lg ${priceChange24h >= 0
+                        ? 'text-green-400 bg-green-500/10 border border-green-500/20'
+                        : 'text-red-400 bg-red-500/10 border border-red-500/20'
+                        }`}
+                    >
+                      {priceChange24h >= 0 ? '↑' : '↓'} {priceChange24h >= 0 ? '+' : ''}
+                      {priceChange24h.toFixed(2)}%
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-gray-500">24h Change</p>
                   </div>
                 </div>
 
-                {/* Timeframe Selection - Enhanced with glow */}
-                <div className="flex gap-2 mb-4 overflow-x-auto custom-scrollbar pb-2">
+                {/* 24h Stats */}
+                <div className="flex gap-4 sm:gap-6 border-t sm:border-t-0 border-gray-800 pt-4 sm:pt-0">
+                  <div className="text-left sm:text-right">
+                    <div className="text-[10px] sm:text-xs text-gray-500 mb-1">24h High</div>
+                    <div className="text-xs sm:text-sm md:text-base text-green-400 font-semibold">
+                      {formatPrice(high24h)}
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <div className="text-[10px] sm:text-xs text-gray-500 mb-1">24h Low</div>
+                    <div className="text-xs sm:text-sm md:text-base text-red-400 font-semibold">
+                      {formatPrice(low24h)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeframe and Indicators Toggles */}
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
                   {TIMEFRAMES.map((tf) => (
                     <button
                       key={tf.value}
                       onClick={() => setTimeframe(tf.value)}
-                      className={`px-4 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all whitespace-nowrap relative ${
-                        timeframe === tf.value
-                          ? 'bg-cyan-500 text-white'
-                          : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50'
-                      }`}
-                      style={timeframe === tf.value ? {
-                        boxShadow: '0 0 15px rgba(34, 211, 238, 0.5), 0 0 30px rgba(34, 211, 238, 0.2)',
-                      } : {}}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${timeframe === tf.value
+                        ? 'bg-cyan-500 text-white'
+                        : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50'
+                        }`}
                     >
                       {tf.label}
                     </button>
                   ))}
                 </div>
 
-                {/* Moving Averages - Enhanced design */}
-                <div className="flex gap-4 md:gap-6 text-xs md:text-sm overflow-x-auto custom-scrollbar">
-                  <div className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-gray-800/30 border border-gray-700/50">
+                <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-1 text-[10px] sm:text-xs">
+                  <div className="whitespace-nowrap px-2 py-1 rounded-md bg-gray-800/30 border border-gray-700/30">
                     <span className="text-gray-400">MA7: </span>
-                    <span 
-                      className="text-yellow-400 font-semibold"
-                      style={{
-                        textShadow: '0 0 8px rgba(234, 179, 8, 0.4)',
-                      }}
-                    >
-                      {formatPrice(ma7)}
-                    </span>
+                    <span className="text-yellow-400">{formatPrice(ma7)}</span>
                   </div>
-                  <div className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-gray-800/30 border border-gray-700/50">
+                  <div className="whitespace-nowrap px-2 py-1 rounded-md bg-gray-800/30 border border-gray-700/30">
                     <span className="text-gray-400">MA14: </span>
-                    <span 
-                      className="text-blue-400 font-semibold"
-                      style={{
-                        textShadow: '0 0 8px rgba(96, 165, 250, 0.4)',
-                      }}
-                    >
-                      {formatPrice(ma14)}
-                    </span>
+                    <span className="text-blue-400">{formatPrice(ma14)}</span>
                   </div>
-                  <div className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-gray-800/30 border border-gray-700/50">
+                  <div className="whitespace-nowrap px-2 py-1 rounded-md bg-gray-800/30 border border-gray-700/30">
                     <span className="text-gray-400">MA28: </span>
-                    <span 
-                      className="text-purple-400 font-semibold"
-                      style={{
-                        textShadow: '0 0 8px rgba(168, 85, 247, 0.4)',
-                      }}
-                    >
-                      {formatPrice(ma28)}
-                    </span>
+                    <span className="text-purple-400">{formatPrice(ma28)}</span>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Chart - Takes remaining space, scrollable if needed */}
-            <div className="flex-1 p-4 bg-gray-900 overflow-hidden">
+          {/* Chart Section */}
+          <div className="flex-1 bg-gray-900 min-h-[300px] lg:min-h-0 relative">
+            <div className="absolute inset-0 overflow-hidden">
               {candlestickData.length > 0 ? (
-                <CandlestickChart data={candlestickData} height={400} />
+                <CandlestickChart data={candlestickData} height={document.querySelector('.flex-1.bg-gray-900')?.clientHeight || 400} />
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-500">
                   Loading chart...
@@ -312,15 +266,13 @@ export default function Trade() {
               )}
             </div>
           </div>
+        </div>
 
-          {/* Right Panel - Order Book and Trading */}
-          {/* 
-            Right panel: Fixed width, matches center height, independently scrollable
-            Split into two sections: OrderBook (scrollable) and TradePanel (scrollable)
-          */}
-          <div className="w-full lg:w-80 lg:flex-shrink-0 flex flex-col border-t border-gray-800 lg:border-t-0 lg:border-l overflow-hidden">
-            {/* Order Book - Scrollable section */}
-            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+        {/* Right Panel: Order Book and Trade Form */}
+        <div className="w-full lg:w-96 lg:flex-shrink-0 flex flex-col border-t lg:border-t-0 lg:border-l border-gray-800 lg:h-screen overflow-y-auto custom-scrollbar">
+          <div className="flex flex-col sm:flex-row lg:flex-col flex-1 divide-y sm:divide-y-0 lg:divide-y divide-gray-800">
+            {/* Order Book */}
+            <div className="flex-1 h-[400px] sm:h-[500px] lg:h-1/2 overflow-hidden border-b sm:border-b-0 sm:border-r lg:border-r-0 border-gray-800">
               <OrderBook
                 orderBook={orderBook}
                 grouping={grouping}
@@ -328,9 +280,11 @@ export default function Trade() {
               />
             </div>
 
-            {/* Trading Interface - Scrollable section */}
-            <div className="flex-1 overflow-hidden min-h-0 border-t border-gray-800">
-              <TradePanel initialAsset={selectedSymbol.replace('USDT', '')} />
+            {/* Trading Interface */}
+            <div className="flex-1 min-h-[450px]  custom-scrollbar">
+              <div className="p-4">
+                <TradePanel key={selectedSymbol} symbol={selectedSymbol} />
+              </div>
             </div>
           </div>
         </div>

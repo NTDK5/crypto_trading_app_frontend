@@ -233,19 +233,19 @@ export default function Dashboard() {
         </div>
 
         {/* NEW SECTIONS: PORTFOLIO & HISTORY */}
-        <div className="grid lg:grid-cols-3 gap-6 my-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 my-10">
           <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-2">
               <h2 className="text-xl font-bold text-white">Transaction History</h2>
               <button className="text-sm text-cyan-400 hover:text-cyan-300">View All</button>
             </div>
-            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 md:p-6 overflow-hidden">
               <TransactionHistory />
             </div>
           </div>
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white">Portfolio Allocation</h2>
-            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 h-full">
+            <h2 className="text-xl font-bold text-white px-2">Portfolio Allocation</h2>
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 md:p-6 h-full">
               <Portfolio />
             </div>
           </div>

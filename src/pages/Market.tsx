@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, LayoutDashboard } from 'lucide-react'
 import { marketService, MarketData } from '../services/marketService'
 import TradingChart from '../components/TradingChart'
 import MarketTable from '../components/MarketTable'
@@ -8,6 +9,7 @@ import TopLosers from '../components/TopLosers'
 import TrendingNow from '../components/TrendingNow'
 
 export default function Market() {
+  const navigate = useNavigate()
   const [marketData, setMarketData] = useState<MarketData[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -94,10 +96,10 @@ export default function Market() {
           <MarketTable />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Market List */}
           <div className="lg:col-span-1 space-y-3">
-            <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-3 md:p-4">
+            <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-4 md:p-4">
               <h2 className="text-base md:text-lg font-semibold text-white mb-4">Markets</h2>
               <div className="space-y-2 max-h-[400px] md:max-h-[600px] overflow-y-auto scrollbar-hide">
                 {marketData.map((asset) => {
@@ -112,7 +114,7 @@ export default function Market() {
                         : 'bg-gray-800/50 border-gray-700/50 hover:border-cyan-500/50 hover:bg-gray-800/80'
                         }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isSelected
                             ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'

@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
 import { useCryptoWebSocket } from '../hooks/useCryptoWebSocket'
 
-
 export default function TopGainers() {
+  const navigate = useNavigate()
   const { cryptoData, loading } = useCryptoWebSocket({ useWebSocket: true })
 
   const gainers = useMemo(() => {
@@ -48,10 +49,15 @@ export default function TopGainers() {
         <h2 className="text-xl font-bold text-white">↑ Top Gainers</h2>
       </div>
       <div className="space-y-4">
-        {gainers.map((crypto, index) => (
+        {gainers.map((crypto: any, index: number) => (
           <div
             key={crypto.id}
-            className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800/70 transition-colors"
+            onClick={() => {
+              const symbol = crypto.symbol.toUpperCase()
+              const tradeSymbol = symbol.endsWith('USDT') ? symbol : `${symbol}USDT`
+              navigate(`/app/trade?symbol=${tradeSymbol}`)
+            }}
+            className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800/70 transition-colors cursor-pointer group"
           >
             <div className="flex items-center gap-4 flex-1">
               <span className="text-gray-400 font-semibold w-6">{index + 1}</span>

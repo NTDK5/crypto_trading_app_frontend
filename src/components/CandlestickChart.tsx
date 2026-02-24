@@ -47,6 +47,7 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
       },
       rightPriceScale: {
         borderColor: '#334155',
+        autoScale: true,
         scaleMargins: {
           top: 0.1,
           bottom: 0.1,
@@ -61,14 +62,14 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
     // Try accessing them from the module or use type assertion
     const chartAny = chart as any
     let candlestickSeriesInstance: ISeriesApi<'Candlestick'>
-    
+
     // Try new API first
     if (chartAny.addSeries && typeof chartAny.addSeries === 'function') {
       // Try to get series definition from module
-      const seriesDef = (LightweightCharts as any).CandlestickSeries || 
-                        (LightweightCharts as any).candlestickSeries ||
-                        { type: 'Candlestick' }
-      
+      const seriesDef = (LightweightCharts as any).CandlestickSeries ||
+        (LightweightCharts as any).candlestickSeries ||
+        { type: 'Candlestick' }
+
       try {
         candlestickSeriesInstance = chart.addSeries(seriesDef, {
           upColor: '#10b981',
@@ -103,7 +104,7 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
     } else {
       throw new Error('No valid chart API found')
     }
-    
+
     candlestickSeriesRef.current = candlestickSeriesInstance
 
     // Calculate and add moving averages
@@ -131,7 +132,7 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
       if (ma7Data.length > 0) {
         const LineSeriesDef = (LightweightCharts as any).LineSeries || (LightweightCharts as any).lineSeries
         let ma7SeriesInstance: ISeriesApi<'Line'>
-        
+
         try {
           ma7SeriesInstance = chart.addSeries(LineSeriesDef || { type: 'Line' }, {
             color: '#eab308',
@@ -160,7 +161,7 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
       if (ma14Data.length > 0) {
         const LineSeriesDef = (LightweightCharts as any).LineSeries || (LightweightCharts as any).lineSeries
         let ma14SeriesInstance: ISeriesApi<'Line'>
-        
+
         try {
           ma14SeriesInstance = chart.addSeries(LineSeriesDef || { type: 'Line' }, {
             color: '#3b82f6',
@@ -189,7 +190,7 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
       if (ma28Data.length > 0) {
         const LineSeriesDef = (LightweightCharts as any).LineSeries || (LightweightCharts as any).lineSeries
         let ma28SeriesInstance: ISeriesApi<'Line'>
-        
+
         try {
           ma28SeriesInstance = chart.addSeries(LineSeriesDef || { type: 'Line' }, {
             color: '#a855f7',
@@ -215,18 +216,21 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
       }
 
       // Set candlestick data
-    // Set candlestick data
-    const formattedData = data.map((candle) => ({
-      time: candle.time as Time,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-    }))
+      // Set candlestick data
+      const formattedData = data.map((candle) => ({
+        time: candle.time as Time,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+      }))
 
-    candlestickSeriesInstance.setData(formattedData)
+      candlestickSeriesInstance.setData(formattedData)
 
-  }
+      // Fitting content to zoom in and show all data
+      chart.timeScale().fitContent()
+
+    }
 
     // Handle resize
     const handleResize = () => {
@@ -301,10 +305,9 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
         }
       }
 
-      // Auto-scroll to the latest data
+      // Auto-scroll to the latest data and fit content
       if (chartRef.current && formattedData.length > 0) {
-        // const _lastTime: Time = formattedData[formattedData.length - 1].time
-        chartRef.current.timeScale().scrollToPosition(-1, true)
+        chartRef.current.timeScale().fitContent()
       }
     }
   }, [data])

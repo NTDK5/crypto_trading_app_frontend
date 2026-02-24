@@ -26,37 +26,28 @@ const BINANCE_SYMBOLS = [
 export const marketService = {
   async getAllMarketData(): Promise<MarketData[]> {
     try {
-      console.log('Fetching market data directly from Binance...')
+      console.log('Fetching market data from Binance (bulk)...')
 
-      // Fetch all market data in parallel from Binance
-      const promises = BINANCE_SYMBOLS.map(async (symbol) => {
-        try {
-          const response = await fetch(
-            `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`
-          )
+      // Fetch all tickers in one request to avoid rate limits/CORS issues with many individual requests
+      const response = await fetch('https://api.binance.com/api/v3/ticker/24hr')
 
-          if (!response.ok) {
-            throw new Error(`Failed to fetch ${symbol}`)
-          }
+      if (!response.ok) {
+        throw new Error(`Binance API error: ${response.status}`)
+      }
 
-          const data = await response.json()
+      const allTickers: any[] = await response.json()
 
-          return {
-            asset: symbol.replace('USDT', ''), // Remove USDT for display
-            price: parseFloat(data.lastPrice),
-            change24h: parseFloat(data.priceChangePercent),
-            volume24h: parseFloat(data.volume),
-            high24h: parseFloat(data.highPrice),
-            low24h: parseFloat(data.lowPrice),
-          }
-        } catch (error) {
-          console.warn(`Failed to fetch ${symbol}:`, error)
-          return null
-        }
-      })
-
-      const results = await Promise.all(promises)
-      const validResults = results.filter((r): r is MarketData => r !== null)
+      // Filter for the symbols we are interested in
+      const validResults = allTickers
+        .filter(ticker => BINANCE_SYMBOLS.includes(ticker.symbol))
+        .map(ticker => ({
+          asset: ticker.symbol.replace('USDT', ''),
+          price: parseFloat(ticker.lastPrice),
+          change24h: parseFloat(ticker.priceChangePercent),
+          volume24h: parseFloat(ticker.quoteVolume),
+          high24h: parseFloat(ticker.highPrice),
+          low24h: parseFloat(ticker.lowPrice),
+        }))
 
       console.log(`Successfully fetched ${validResults.length} market data entries from Binance`)
 

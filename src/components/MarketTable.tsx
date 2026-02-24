@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ArrowUpRight, ArrowDownRight, Search, TrendingUp } from 'lucide-react'
 import { useCryptoWebSocket } from '../hooks/useCryptoWebSocket'
 
@@ -8,6 +9,7 @@ type FilterType = 'all' | 'gainers' | 'losers'
 type SortType = 'volume' | 'price' | 'change' | 'name'
 
 export default function MarketTable() {
+  const navigate = useNavigate()
   const { cryptoData, loading } = useCryptoWebSocket({ useWebSocket: true })
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
@@ -112,31 +114,28 @@ export default function MarketTable() {
         <div className="flex gap-2">
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              filter === 'all'
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
+            className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'all'
+              ? 'bg-red-500 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
           >
             All
           </button>
           <button
             onClick={() => setFilter('gainers')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              filter === 'gainers'
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
+            className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'gainers'
+              ? 'bg-red-500 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
           >
             Gainers
           </button>
           <button
             onClick={() => setFilter('losers')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              filter === 'losers'
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
+            className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'losers'
+              ? 'bg-red-500 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
           >
             Losers
           </button>
@@ -216,11 +215,10 @@ export default function MarketTable() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                          isPositive
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-red-500/20 text-red-400'
-                        }`}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${isPositive
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'bg-red-500/20 text-red-400'
+                          }`}
                       >
                         {isPositive ? (
                           <ArrowUpRight className="w-3 h-3" />
@@ -241,7 +239,14 @@ export default function MarketTable() {
                       {formatVolume(crypto.total_volume ?? 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <button className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/50 rounded-lg text-sm font-medium text-cyan-400 hover:from-cyan-500/30 hover:to-blue-500/30 hover:border-cyan-400 transition">
+                      <button
+                        onClick={() => {
+                          const symbol = crypto.symbol.toUpperCase()
+                          const tradeSymbol = symbol.endsWith('USDT') ? symbol : `${symbol}USDT`
+                          navigate(`/app/trade?symbol=${tradeSymbol}`)
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/50 rounded-lg text-sm font-medium text-cyan-400 hover:from-cyan-500/30 hover:to-blue-500/30 hover:border-cyan-400 transition"
+                      >
                         <TrendingUp className="w-4 h-4" />
                         Trade
                       </button>

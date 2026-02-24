@@ -60,16 +60,16 @@ export default function TransactionHistory() {
                                 <span className="font-medium text-gray-200">{tx.type.replace(/_/g, ' ')}</span>
                             </td>
                             <td className="py-3 px-4 text-gray-300">{tx.asset}</td>
-                            <td className={`py-3 px-4 text-right font-medium ${tx.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(4)}
+                            <td className={`py-3 px-4 text-right font-medium ${(tx.type.includes('WITHDRAWAL') || tx.type.includes('INVESTMENT') || tx.type.includes('BUY')) ? 'text-red-400' : 'text-green-400'}`}>
+                                {(tx.type.includes('WITHDRAWAL') || tx.type.includes('INVESTMENT') || tx.type.includes('BUY')) ? '-' : '+'}{Math.abs(tx.amount).toFixed(4)}
                             </td>
                             <td className="py-3 px-4 text-right text-gray-400">
                                 {new Date(tx.createdAt).toLocaleDateString()}
                             </td>
                             <td className="py-3 px-4 text-right">
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${tx.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' :
-                                        tx.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400' :
-                                            'bg-red-500/10 text-red-400'
+                                    tx.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400' :
+                                        'bg-red-500/10 text-red-400'
                                     }`}>
                                     {tx.status}
                                 </span>
