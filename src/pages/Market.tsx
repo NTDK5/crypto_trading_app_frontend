@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, LayoutDashboard } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { marketService, MarketData } from '../services/marketService'
 import TradingChart from '../components/TradingChart'
 import MarketTable from '../components/MarketTable'
@@ -9,7 +8,7 @@ import TopLosers from '../components/TopLosers'
 import TrendingNow from '../components/TrendingNow'
 
 export default function Market() {
-  const navigate = useNavigate()
+
   const [marketData, setMarketData] = useState<MarketData[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)

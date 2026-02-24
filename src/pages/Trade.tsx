@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { binanceService, BinanceTicker, BinanceOrderBook, CandlestickData } from '../services/binanceService'
 import MarketList from '../components/MarketList'
 import OrderBook from '../components/OrderBook'
@@ -17,7 +17,6 @@ const TIMEFRAMES = [
 
 export default function Trade() {
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const initialSymbol = searchParams.get('symbol') || 'BTCUSDT'
   const [markets, setMarkets] = useState<BinanceTicker[]>([])
   const [selectedSymbol, setSelectedSymbol] = useState(initialSymbol)
