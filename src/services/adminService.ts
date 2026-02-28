@@ -68,6 +68,7 @@ export interface AdminTransaction {
     status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REJECTED'
     txHash?: string
     address?: string
+    screenshotUrl?: string
     userId: string
     user?: { email: string }
     notes?: string
@@ -369,8 +370,13 @@ export const adminService = {
         adminId?: string; actionType?: string; targetType?: string;
         from?: string; to?: string
     }): Promise<{ data: AuditLog[]; pagination?: Pagination }> {
-        const r = await api.get<{ success: boolean; data: any }>('/admin/audit-logs', { params })
-        // The existing service returns an object with logs array and pagination
+        // Map from/to → startDate/endDate which the backend expects
+        const { from, to, ...rest } = params || {}
+        const backendParams: any = { ...rest }
+        if (from) backendParams.startDate = from
+        if (to) backendParams.endDate = to
+        const r = await api.get<{ success: boolean; data: any }>('/admin/audit-logs', { params: backendParams })
+        // The service returns { logs: [...], pagination: {...} }
         if (Array.isArray(r.data.data)) {
             return { data: r.data.data }
         }

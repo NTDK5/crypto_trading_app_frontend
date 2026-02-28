@@ -23,6 +23,7 @@ export interface Transaction {
 export interface DepositRequest {
   asset: string
   amount: number
+  screenshotUrl: string
 }
 
 export interface WithdrawRequest {

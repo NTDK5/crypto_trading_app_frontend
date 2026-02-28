@@ -42,6 +42,7 @@ export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }:
     const [binaryDuration, setBinaryDuration] = useState(60)
 
     const [loading, setLoading] = useState(false)
+    const [tradingEnabled, setTradingEnabled] = useState(true)
     const [msg, setMsg] = useState({ type: '', text: '' })
 
     // Auto-update price field when market price changes (for Limit/Stop-Limit orders)
@@ -64,6 +65,10 @@ export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }:
                 const base = balances.find(b => b.asset === asset)
                 setBalance(usdt?.available || 0)
                 setBaseBalance(base?.available || 0)
+
+                // Fetch trading status
+                const status = await spotTradeService.getTradingStatus()
+                setTradingEnabled(status.enabled)
             } catch (e) {
                 console.error(e)
             }
@@ -159,13 +164,48 @@ export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }:
     }
 
     const handleSpotTrade = async () => {
-        if (!spotAmount) return
-        if (orderType === 'STOP' && !triggerPrice) return
-        if (orderType === 'LIMIT' && !limitPrice) return
-        if (orderType === 'STOP_LIMIT' && (!stopPrice || !limitPrice)) return
+        // Pre-processing Validation
+        setMsg({ type: '', text: '' })
+
+        if (!tradingEnabled) {
+            setMsg({ type: 'error', text: 'Trading is currently paused by admin.' })
+            return
+        }
+
+        if (!spotAmount || parseFloat(spotAmount) <= 0) {
+            setMsg({ type: 'error', text: 'Please enter a valid amount' })
+            return
+        }
+
+        if (orderType === 'STOP' && !triggerPrice) {
+            setMsg({ type: 'error', text: 'Please enter a trigger price' })
+            return
+        }
+        if (orderType === 'LIMIT' && !limitPrice) {
+            setMsg({ type: 'error', text: 'Please enter a limit price' })
+            return
+        }
+        if (orderType === 'STOP_LIMIT' && (!stopPrice || !limitPrice)) {
+            setMsg({ type: 'error', text: 'Please enter both stop and limit prices' })
+            return
+        }
+
+        // Check sufficient balance before starting processing
+        if (spotSide === 'BUY') {
+            const totalWithFee = parseFloat(calculatedValues.totalWithFee)
+            if (totalWithFee > balance) {
+                setMsg({ type: 'error', text: 'Insufficient USDT balance' })
+                return
+            }
+        } else {
+            const amount = parseFloat(spotAmount)
+            if (amount > baseBalance) {
+                setMsg({ type: 'error', text: `Insufficient ${asset} balance` })
+                return
+            }
+        }
 
         setLoading(true)
-        setMsg({ type: '', text: '' })
         try {
             const tradeSymbol = `${asset}/USDT`
 
@@ -322,14 +362,6 @@ export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }:
                 </div>
 
 
-                {msg.text && (
-                    <div className={`mb-4 p-3 rounded-lg text-sm ${msg.type === 'success'
-                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}>
-                        {msg.text}
-                    </div>
-                )}
 
                 {activeTab === 'spot' ? (
                     <div className="space-y-4">
@@ -512,21 +544,46 @@ export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }:
                             )}
                         </div>
 
+                        {!tradingEnabled && (
+                            <div className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
+                                <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+                                Trading is currently paused by administrator.
+                            </div>
+                        )}
+
+                        {msg.text && (
+                            <div className={`p-3 rounded-xl text-sm font-medium border ${msg.type === 'success'
+                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                }`}>
+                                {msg.text}
+                            </div>
+                        )}
+
                         {/* Action Button */}
                         <button
                             onClick={handleSpotTrade}
-                            disabled={loading || !isFormValid}
+                            disabled={loading || !isFormValid || !tradingEnabled}
                             className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition relative disabled:opacity-50 disabled:cursor-not-allowed ${spotSide === 'BUY'
                                 ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400'
                                 : 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400'
                                 }`}
-                            style={!loading && isFormValid ? {
+                            style={!loading && isFormValid && tradingEnabled ? {
                                 boxShadow: spotSide === 'BUY'
                                     ? '0 0 20px rgba(34, 197, 94, 0.6)'
                                     : '0 0 20px rgba(239, 68, 68, 0.6)',
                             } : {}}
                         >
-                            {loading ? 'Processing...' : `${orderType.replace('_', '-')} ${spotSide} ${asset}`}
+                            {loading ? (
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Processing...
+                                </div>
+                            ) : !tradingEnabled ? (
+                                'Trading Paused'
+                            ) : (
+                                `${orderType.replace('_', '-')} ${spotSide} ${asset}`
+                            )}
                         </button>
 
                         {/* Open Orders Section */}

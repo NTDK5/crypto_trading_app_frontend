@@ -77,5 +77,10 @@ export const spotTradeService = {
     async getStopLimitOrders(symbol?: string): Promise<any[]> {
         const response = await api.get<{ success: boolean; data: any[] }>('/spot/stop-limit-orders', { params: { symbol } })
         return response.data.data
+    },
+    
+    async getTradingStatus(): Promise<{ enabled: boolean }> {
+        const response = await api.get<{ success: boolean; data: { enabled: boolean } }>('/spot/status')
+        return response.data.data
     }
 }

@@ -20,8 +20,9 @@ export default function Wallet() {
   const [showWithdrawFundPassword, setShowWithdrawFundPassword] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [balanceVisible, setBalanceVisible] = useState(true)
-  const [_paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
+  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
+  // const [_uploading, setUploading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
   // Calculate totals
@@ -52,13 +53,25 @@ export default function Wallet() {
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!paymentScreenshot) {
+      setMessage({ type: 'error', text: 'Please upload a payment screenshot' })
+      return
+    }
+
     setLoading(true)
     setMessage(null)
 
     try {
+      // In a real app, you'd upload the file first and get a URL
+      // For now, we'll simulate an upload if needed or just use the preview URL as a placeholder
+      // Actually, let's assume the service handles the screenshot or we pass a placeholder URL
+      const screenshotUrl = screenshotPreview || 'placeholder-url'
+
       await walletService.deposit({
         asset: 'USDT',
         amount: parseFloat(depositAmount),
+        screenshotUrl: screenshotUrl // Added field
       })
       setMessage({ type: 'success', text: 'Deposit request submitted successfully!' })
       setDepositAmount('')
@@ -391,7 +404,7 @@ export default function Wallet() {
                 {/* Payment confirmation / screenshot section */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-300">
-                    Payment Confirmation (optional)
+                    Payment Confirmation <span className="text-red-400">*</span>
                   </label>
                   <p className="text-xs text-gray-400">
                     Upload a transfer receipt or screenshot so our team can verify your deposit

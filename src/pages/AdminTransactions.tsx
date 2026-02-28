@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CheckCircle, XCircle, ChevronLeft, ChevronRight, ImageIcon, Download, AlertTriangle } from 'lucide-react'
 import { adminService, AdminTransaction } from '../services/adminService'
 import { StatusBadge } from '../components/admin/StatusBadge'
 
@@ -134,6 +134,9 @@ export default function AdminTransactions() {
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Asset</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                            {activeTab === 'pending-deposits' && (
+                                <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Screenshot</th>
+                            )}
                             {activeTab !== 'history' && (
                                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                             )}
@@ -157,6 +160,26 @@ export default function AdminTransactions() {
                                 <td className="px-4 py-3 text-xs text-slate-400">{txn.asset}</td>
                                 <td className="px-4 py-3"><StatusBadge status={txn.status} dot /></td>
                                 <td className="px-4 py-3 text-[10px] text-slate-600">{new Date(txn.createdAt).toLocaleString()}</td>
+                                {activeTab === 'pending-deposits' && (
+                                    <td className="px-4 py-3">
+                                        {txn.screenshotUrl ? (
+                                            <a
+                                                href={txn.screenshotUrl}
+                                                download
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={e => e.stopPropagation()}
+                                                className="flex items-center gap-1 px-2 py-1 text-[10px] text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded transition-colors w-fit"
+                                            >
+                                                <ImageIcon size={10} /> View / DL
+                                            </a>
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-[10px] text-amber-500">
+                                                <AlertTriangle size={10} /> No screenshot
+                                            </span>
+                                        )}
+                                    </td>
+                                )}
                                 {activeTab !== 'history' && (
                                     <td className="px-4 py-3">
                                         <div className="flex gap-2">
@@ -208,6 +231,40 @@ export default function AdminTransactions() {
                         <p className="text-slate-400 text-sm mb-4">
                             {Number(modal.transaction.amount).toFixed(2)} {modal.transaction.asset} for {modal.transaction.user?.email}
                         </p>
+                        {modal.transaction.type === 'DEPOSIT' && (
+                            <div className="mb-4">
+                                <p className="text-xs text-slate-500 mb-1.5 block">Payment Screenshot</p>
+                                {modal.transaction.screenshotUrl ? (
+                                    <>
+                                        <div className="rounded-lg overflow-hidden border border-white/10 bg-black/20">
+                                            <img
+                                                src={modal.transaction.screenshotUrl}
+                                                alt="Deposit Screenshot"
+                                                className="w-full h-auto max-h-60 object-contain cursor-zoom-in"
+                                                onClick={() => window.open(modal.transaction.screenshotUrl, '_blank')}
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <p className="text-[10px] text-slate-500">Click image to view full size</p>
+                                            <a
+                                                href={modal.transaction.screenshotUrl}
+                                                download={`deposit-proof-${modal.transaction.id}.png`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded transition-colors ml-auto"
+                                            >
+                                                <Download size={10} /> Download
+                                            </a>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex items-center gap-2 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                                        <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                                        <p className="text-xs text-amber-400">No payment screenshot was uploaded for this deposit.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className="mb-4">
                             <label className="text-xs text-slate-500 mb-1.5 block">
                                 {isApproval && modal.type === 'approve-withdrawal' ? 'Transaction Hash (optional)' : 'Notes (optional)'}

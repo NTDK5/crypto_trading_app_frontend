@@ -347,7 +347,7 @@ export default function AdminUsers() {
                     <thead>
                         <tr className="border-b border-white/5">
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">User</th>
-                            <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">USDT Balance</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Balance</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Trading</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Withdrawals</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Account</th>
@@ -360,7 +360,11 @@ export default function AdminUsers() {
                         ) : users.length === 0 ? (
                             <tr><td colSpan={6} className="py-16 text-center text-slate-600 text-sm">No users found</td></tr>
                         ) : users.map(user => {
-                            const usdtWallet = user.wallets?.find(w => w.asset === 'USDT')
+                            const nonZeroWallets = user.wallets?.filter(w => w.balance > 0 || w.lockedBalance > 0) || []
+                            // Sort: USDT first, then alphabetical
+                            const sortedWallets = [...nonZeroWallets].sort((a, b) =>
+                                a.asset === 'USDT' ? -1 : b.asset === 'USDT' ? 1 : a.asset.localeCompare(b.asset)
+                            )
                             return (
                                 <tr key={user.id} onClick={() => handleRowClick(user)}
                                     className="border-b border-white/[0.04] hover:bg-white/[0.02] cursor-pointer transition-colors last:border-0">
@@ -375,8 +379,23 @@ export default function AdminUsers() {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-xs text-white font-medium">
-                                        {usdtWallet ? `$${(usdtWallet.balance).toFixed(2)}` : '—'}
+                                    <td className="px-4 py-3">
+                                        {sortedWallets.length === 0 ? (
+                                            <span className="text-xs text-slate-600">—</span>
+                                        ) : (
+                                            <div className="space-y-0.5">
+                                                {sortedWallets.slice(0, 2).map(w => (
+                                                    <p key={w.asset} className="text-xs text-white font-medium leading-tight">
+                                                        {w.asset === 'USDT'
+                                                            ? `$${w.balance.toFixed(2)}`
+                                                            : `${w.balance.toFixed(4)} ${w.asset}`}
+                                                    </p>
+                                                ))}
+                                                {sortedWallets.length > 2 && (
+                                                    <p className="text-[10px] text-slate-600">+{sortedWallets.length - 2} more</p>
+                                                )}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3">
                                         <StatusBadge status={user.flags?.tradingFrozen ? 'DISABLED' : 'ACTIVE'} dot />
