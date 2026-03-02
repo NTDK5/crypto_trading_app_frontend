@@ -16,7 +16,8 @@ export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     // If not authenticated, let ProtectedRoute handle it (or redirect to login)
     // If authenticated but not admin, redirect to user dashboard
     console.log('AdminRoute check:', user)
-    if (!user || (user.role !== 'superadmin' && user.role !== 'SUPER_ADMIN')) {
+    const role = user?.role?.toLowerCase()
+    if (!user || (role !== 'superadmin' && role !== 'admin' && role !== 'super_admin')) {
         console.warn('AdminRoute blocked accessing', user?.role)
         return <Navigate to="/app/dashboard" replace />
     }

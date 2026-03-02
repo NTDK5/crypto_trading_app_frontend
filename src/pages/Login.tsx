@@ -23,7 +23,8 @@ export default function Login() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === 'SUPER_ADMIN') {
+      const role = user.role?.toLowerCase()
+      if (role === 'superadmin' || role === 'admin' || role === 'super_admin') {
         navigate('/admin', { replace: true })
       } else {
         navigate('/app/dashboard', { replace: true })
@@ -69,7 +70,8 @@ export default function Login() {
       const user = await googleLogin(response.credential)
       setTimeout(() => {
         console.log('Google Login success, user:', user)
-        if (user.role === 'superadmin' || user.role === 'SUPER_ADMIN') {
+        const role = user.role?.toLowerCase()
+        if (role === 'superadmin' || role === 'admin' || role === 'super_admin') {
           navigate('/admin', { replace: true })
         } else {
           navigate('/app/dashboard', { replace: true })
@@ -88,10 +90,10 @@ export default function Login() {
 
     try {
       const user = await login(email, password)
-      // Navigate after state has been updated
       setTimeout(() => {
         console.log('Login success, user:', user)
-        if (user.role === 'superadmin' || user.role === 'SUPER_ADMIN') {
+        const role = user.role?.toLowerCase()
+        if (role === 'superadmin' || role === 'admin' || role === 'super_admin') {
           navigate('/admin', { replace: true })
         } else {
           console.log('Redirecting to app, role is', user.role)

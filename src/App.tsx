@@ -18,6 +18,7 @@ import AdminTrades from './pages/AdminTrades'
 import AdminRisk from './pages/AdminRisk'
 import AdminConfig from './pages/AdminConfig'
 import AdminAuditLog from './pages/AdminAuditLog'
+import Maintenance from './pages/Maintenance'
 import { AdminRoute } from './components/AdminRoute'
 
 function App() {
@@ -62,6 +63,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="settings" element={<Settings />} />
           </Route>
+          <Route path="/maintenance" element={<Maintenance />} />
           {/* Fallback for unknown routes inside SPA */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -62,6 +62,27 @@ api.interceptors.response.use(
       }
     }
 
+    if (error.response?.data?.code === 'MAINTENANCE_MODE') {
+      // Don't redirect if we're already on a public page or if user is an admin
+      const publicPaths = ['/', '/login', '/register', '/maintenance']
+      const isPublicPath = publicPaths.includes(window.location.pathname)
+
+      const storedUser = localStorage.getItem('user')
+      let isAdmin = false
+      try {
+        if (storedUser) {
+          const user = JSON.parse(storedUser)
+          const role = user.role?.toLowerCase()
+          isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin'
+        }
+      } catch (e) { }
+
+      if (!isPublicPath && !isAdmin) {
+        window.location.href = '/maintenance'
+      }
+      return Promise.reject(error)
+    }
+
     return Promise.reject(error)
   }
 )
