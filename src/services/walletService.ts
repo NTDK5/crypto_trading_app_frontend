@@ -20,10 +20,19 @@ export interface Transaction {
   description?: string
 }
 
+export interface DepositMethodConfig {
+  asset: string
+  address: string
+  network: string
+  enabled: boolean
+  isDefault?: boolean
+}
+
 export interface DepositRequest {
   asset: string
   amount: number
   screenshotUrl: string
+  address?: string
 }
 
 export interface WithdrawRequest {
@@ -56,6 +65,26 @@ export const walletService = {
   async deposit(data: DepositRequest): Promise<Transaction> {
     const response = await api.post<{ success: boolean; data: Transaction }>('/wallet/deposit', data)
     return response.data.data
+  },
+
+  async uploadDepositScreenshot(file: File): Promise<string> {
+    // Read file as data URL and send as base64 JSON payload
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+    const response = await api.post<{ success: boolean; data: { url: string } }>('/uploads/deposit-screenshot', {
+      data: dataUrl,
+    })
+    return response.data.data.url
+  },
+
+  async getDepositConfig(): Promise<DepositMethodConfig[]> {
+    const response = await api.get<{ success: boolean; data: { methods: DepositMethodConfig[] } }>('/wallet/deposit-config')
+    return response.data.data.methods
   },
 
   async withdraw(data: WithdrawRequest): Promise<Transaction> {

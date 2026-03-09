@@ -29,6 +29,16 @@ export default function AdminConfig() {
     const [withdrawalsEnabled, setWithdrawalsEnabled] = useState<boolean | null>(null)
     const [maintenanceMode, setMaintenanceMode] = useState<boolean | null>(null)
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+    const [depositAddresses, setDepositAddresses] = useState<Record<string, string>>({
+        USDT: 'THhtmuzTKrVuM1u7eLvvXBLBbwyLa7DyLG',
+        BTC: 'bc1q03gathn45qxuqlarql5t433j23t5547l7vnvnj',
+        ETH: '0x53ac263378767af828034C93442D8Fd18EA1E8e3',
+    })
+    const [depositEnabled, setDepositEnabled] = useState<Record<string, boolean>>({
+        USDT: true,
+        BTC: true,
+        ETH: true,
+    })
 
     const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
 
@@ -59,6 +69,30 @@ export default function AdminConfig() {
 
                 const mMode = cfgList.find((c: ConfigItem) => c.key === 'MAINTENANCE_MODE_ENABLED')
                 if (mMode) setMaintenanceMode(mMode.value === 'true')
+
+                // Deposit address and toggle configs
+                const nextAddresses: Record<string, string> = {
+                    USDT: depositAddresses.USDT,
+                    BTC: depositAddresses.BTC,
+                    ETH: depositAddresses.ETH,
+                }
+                const nextEnabled: Record<string, boolean> = {
+                    USDT: depositEnabled.USDT,
+                    BTC: depositEnabled.BTC,
+                    ETH: depositEnabled.ETH,
+                }
+
+                cfgList.forEach((c: ConfigItem) => {
+                    if (c.key === 'DEPOSIT_USDT_ADDRESS') nextAddresses.USDT = c.value
+                    if (c.key === 'DEPOSIT_BTC_ADDRESS') nextAddresses.BTC = c.value
+                    if (c.key === 'DEPOSIT_ETH_ADDRESS') nextAddresses.ETH = c.value
+                    if (c.key === 'DEPOSIT_USDT_ENABLED') nextEnabled.USDT = c.value === 'true'
+                    if (c.key === 'DEPOSIT_BTC_ENABLED') nextEnabled.BTC = c.value === 'true'
+                    if (c.key === 'DEPOSIT_ETH_ENABLED') nextEnabled.ETH = c.value === 'true'
+                })
+
+                setDepositAddresses(nextAddresses)
+                setDepositEnabled(nextEnabled)
             }
             if (metrics.status === 'fulfilled') {
                 setTradingEnabled(metrics.value.systemStatus?.tradingEnabled ?? true)
@@ -89,6 +123,24 @@ export default function AdminConfig() {
         } catch (e: any) {
             showToast(e?.response?.data?.message || 'Failed to update spread', false)
         } finally { setSaving(null) }
+    }
+
+    const handleSaveDepositConfig = async (asset: 'USDT' | 'BTC' | 'ETH') => {
+        setSaving(`deposit-${asset}`)
+        try {
+            const address = depositAddresses[asset]
+            const enabled = depositEnabled[asset]
+            await Promise.all([
+                adminService.updateSystemConfig(`DEPOSIT_${asset}_ADDRESS`, address, 'PAYMENTS'),
+                adminService.updateSystemConfig(`DEPOSIT_${asset}_ENABLED`, enabled ? 'true' : 'false', 'PAYMENTS'),
+            ])
+            await fetchConfigs()
+            showToast(`Deposit config for ${asset} saved`)
+        } catch (e: any) {
+            showToast(e?.response?.data?.message || `Failed to save ${asset} deposit config`, false)
+        } finally {
+            setSaving(null)
+        }
     }
 
     const killSwitches: KillSwitch[] = [
@@ -255,6 +307,54 @@ export default function AdminConfig() {
                             <Save size={14} /> {saving === 'fee' ? 'Saving…' : 'Save'}
                         </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Deposit Methods */}
+            <div className="mb-8">
+                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    Deposit Methods
+                </h2>
+                <div className="bg-[#111827] border border-white/5 rounded-xl p-5 space-y-4">
+                    {(['USDT', 'BTC', 'ETH'] as const).map(asset => (
+                        <div key={asset} className="flex flex-col md:flex-row md:items-end gap-4 border-b border-white/5 last:border-0 pb-4 last:pb-0">
+                            <div className="flex-1">
+                                <label className="text-xs text-slate-500 mb-1.5 block">
+                                    {asset} Deposit Address
+                                </label>
+                                <input
+                                    type="text"
+                                    value={depositAddresses[asset]}
+                                    onChange={e => setDepositAddresses(prev => ({ ...prev, [asset]: e.target.value }))}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/20"
+                                    placeholder={`Enter ${asset} deposit address`}
+                                />
+                                <p className="text-[11px] text-slate-500 mt-1">
+                                    This address is shown to users on the wallet deposit screen.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-2 text-xs text-slate-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={depositEnabled[asset]}
+                                        onChange={e =>
+                                            setDepositEnabled(prev => ({ ...prev, [asset]: e.target.checked }))
+                                        }
+                                        className="rounded border-white/20 bg-transparent"
+                                    />
+                                    Enable {asset} deposits
+                                </label>
+                                <button
+                                    onClick={() => handleSaveDepositConfig(asset)}
+                                    disabled={saving === `deposit-${asset}`}
+                                    className="flex items-center gap-2 px-3 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 transition-colors"
+                                >
+                                    <Save size={12} /> {saving === `deposit-${asset}` ? 'Saving…' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
