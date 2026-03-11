@@ -226,18 +226,30 @@ function UserSlideOver({ user, onClose, onAction }: { user: AdminUser; onClose: 
                                 return <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-400"><Clock size={12} />Pending</span>
                             })()}
                         </div>
-                        {(user as any).kycData && (
+                        {((user as any).identityVerification || (user as any).kycData) && (user as any).kycStatus !== 'UNVERIFIED' && (
                             <div className="bg-white/[0.03] border border-white/5 rounded-lg p-3 mb-3 space-y-2">
                                 <p className="text-[10px] text-gray-500 uppercase font-semibold">Submitted KYC Data</p>
                                 <div className="grid grid-cols-2 gap-2 text-xs">
                                     <div className="text-gray-400">Name:</div>
-                                    <div className="text-white font-medium">{(user as any).kycData.fullName}</div>
+                                    <div className="text-white font-medium">{(user as any).identityVerification?.fullName || (user as any).kycData?.fullName}</div>
                                     <div className="text-gray-400">DOB:</div>
-                                    <div className="text-white font-medium">{(user as any).kycData.dateOfBirth}</div>
+                                    <div className="text-white font-medium">
+                                        {(user as any).identityVerification?.dateOfBirth
+                                            ? new Date((user as any).identityVerification.dateOfBirth).toLocaleDateString()
+                                            : (user as any).kycData?.dateOfBirth}
+                                    </div>
                                     <div className="text-gray-400">ID Type:</div>
-                                    <div className="text-white font-medium uppercase">{(user as any).kycData.idType}</div>
+                                    <div className="text-white font-medium uppercase">
+                                        {(user as any).identityVerification?.documentType ||
+                                            (user as any).kycData?.documentType ||
+                                            (user as any).kycData?.idType}
+                                    </div>
                                     <div className="text-gray-400">ID No.:</div>
-                                    <div className="text-white font-medium">{(user as any).kycData.idNumber}</div>
+                                    <div className="text-white font-medium">
+                                        {(user as any).identityVerification?.documentNumber ||
+                                            (user as any).kycData?.documentNumber ||
+                                            (user as any).kycData?.idNumber}
+                                    </div>
                                 </div>
                                 {(user as any).kycSubmittedAt && (
                                     <p className="text-[10px] text-gray-600 mt-2">Submitted: {new Date((user as any).kycSubmittedAt).toLocaleString()}</p>

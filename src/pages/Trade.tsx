@@ -13,6 +13,7 @@ import MarketList from '../components/MarketList'
 import OrderBook from '../components/OrderBook'
 import CandlestickChart from '../components/CandlestickChart'
 import TradePanel from '../components/trading/TradePanel'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 
 const TIMEFRAMES = [
@@ -249,12 +250,13 @@ export default function Trade() {
 
           {/* Chart */}
           <div className="flex-1 bg-gray-950 min-h-[300px] lg:min-h-0 relative">
-            <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0">
               {candlestickData.length > 0 ? (
-                <CandlestickChart
-                  data={candlestickData}
-                  height={document.querySelector('.flex-1.bg-gray-950')?.clientHeight || 400}
-                />
+                <ErrorBoundary name="CandlestickChart">
+                  <CandlestickChart
+                    data={candlestickData}
+                  />
+                </ErrorBoundary>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center gap-3 text-gray-600">
                   <div className="w-8 h-8 border-2 border-gray-700 border-t-cyan-500 rounded-full animate-spin" />
