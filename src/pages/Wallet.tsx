@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react'
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, RefreshCw, Settings, Eye, EyeOff, MessageCircle, ChevronRight, Repeat, User } from 'lucide-react'
-import { walletService, WalletBalance } from '../services/walletService'
+import { walletService, WalletBalance, DepositMethodConfig } from '../services/walletService'
+import { marketService } from '../services/marketService'
 import { useAuth } from '../contexts/AuthContext'
 import TransactionHistory from '../components/dashboard/TransactionHistory'
 import Portfolio from '../components/dashboard/Portfolio'
+
+const DEFAULT_DEPOSIT_ADDRESSES: Record<'USDT' | 'BTC' | 'ETH', string> = {
+  USDT: 'THhtmuzTKrVuM1u7eLvvXBLBbwyLa7DyLG',
+  BTC: 'bc1q03gathn45qxuqlarql5t433j23t5547l7vnvnj',
+  ETH: '0x53ac263378767af828034C93442D8Fd18EA1E8e3',
+}
 
 export default function Wallet() {
   const { user } = useAuth()
@@ -24,6 +31,13 @@ export default function Wallet() {
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
   // const [_uploading, setUploading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [depositMethods, setDepositMethods] = useState<DepositMethodConfig[]>([])
+  const [selectedDepositAsset, setSelectedDepositAsset] = useState<'USDT' | 'BTC' | 'ETH'>('USDT')
+  const [selectedDepositAddress, setSelectedDepositAddress] = useState(
+    DEFAULT_DEPOSIT_ADDRESSES.USDT,
+  )
+  const [estimatedUsdt, setEstimatedUsdt] = useState<number | null>(null)
+  const [priceLoading, setPriceLoading] = useState(false)
 
   // Calculate totals
   const totalAssetsUSD = balances.reduce((sum, b) => sum + (b.balance || 0), 0)
@@ -44,12 +58,104 @@ export default function Wallet() {
 
   const fetchData = async () => {
     try {
-      const balancesData = await walletService.getBalances()
+      const [balancesData, methods] = await Promise.all([
+        walletService.getBalances(),
+        walletService.getDepositConfig().catch(() => [] as DepositMethodConfig[]),
+      ])
       setBalances(balancesData)
+      if (methods && methods.length > 0) {
+        setDepositMethods(methods)
+        const enabled = methods.filter(m => m.enabled)
+        // Prefer USDT as default when enabled, then explicit default, then first enabled/any
+        const usdtMethod = enabled.find(m => m.asset === 'USDT')
+        const defaultMethod = (usdtMethod ||
+          enabled.find(m => m.isDefault) ||
+          enabled[0] ||
+          methods[0]) as DepositMethodConfig | undefined
+        if (defaultMethod) {
+          const asset = (defaultMethod.asset as 'USDT' | 'BTC' | 'ETH') || 'USDT'
+          setSelectedDepositAsset(asset)
+          setSelectedDepositAddress(defaultMethod.address || DEFAULT_DEPOSIT_ADDRESSES[asset])
+        }
+      } else {
+        // Fallback to built-in defaults if backend config is unavailable
+        setSelectedDepositAsset('USDT')
+        setSelectedDepositAddress(DEFAULT_DEPOSIT_ADDRESSES.USDT)
+      }
     } catch (error) {
       console.error('Failed to fetch wallet data:', error)
     }
   }
+
+  // Refresh deposit methods (and addresses) whenever the deposit modal is opened,
+  // so admin changes are reflected without a full page reload.
+  useEffect(() => {
+    if (!showDeposit) return
+
+    const refreshDepositConfig = async () => {
+      try {
+        const methods = await walletService.getDepositConfig().catch(() => [] as DepositMethodConfig[])
+        if (methods && methods.length > 0) {
+          setDepositMethods(methods)
+          const enabled = methods.filter(m => m.enabled)
+          const usdtMethod = enabled.find(m => m.asset === 'USDT')
+          const defaultMethod = (usdtMethod ||
+            enabled.find(m => m.isDefault) ||
+            enabled[0] ||
+            methods[0]) as DepositMethodConfig | undefined
+          if (defaultMethod) {
+            const asset = (defaultMethod.asset as 'USDT' | 'BTC' | 'ETH') || 'USDT'
+            setSelectedDepositAsset(asset)
+            setSelectedDepositAddress(defaultMethod.address || DEFAULT_DEPOSIT_ADDRESSES[asset])
+          }
+        }
+      } catch (err) {
+        console.error('Failed to refresh deposit config:', err)
+      }
+    }
+
+    refreshDepositConfig()
+  }, [showDeposit])
+
+  // Recalculate estimated credited USDT when amount or method changes
+  useEffect(() => {
+    const amountNum = parseFloat(depositAmount)
+    if (!depositAmount || isNaN(amountNum) || amountNum <= 0) {
+      setEstimatedUsdt(null)
+      return
+    }
+
+    if (selectedDepositAsset === 'USDT') {
+      setEstimatedUsdt(amountNum)
+      return
+    }
+
+    let cancelled = false
+    const fetchEstimate = async () => {
+      try {
+        setPriceLoading(true)
+        const symbol = `${selectedDepositAsset}USDT`
+        const price = await marketService.getPrice(symbol)
+        if (!cancelled) {
+          setEstimatedUsdt(amountNum * price)
+        }
+      } catch (e) {
+        console.error('Failed to fetch price for estimate:', e)
+        if (!cancelled) {
+          setEstimatedUsdt(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setPriceLoading(false)
+        }
+      }
+    }
+
+    fetchEstimate()
+    return () => {
+      cancelled = true
+    }
+  }, [depositAmount, selectedDepositAsset])
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,15 +169,20 @@ export default function Wallet() {
     setMessage(null)
 
     try {
-      // In a real app, you'd upload the file first and get a URL
-      // For now, we'll simulate an upload if needed or just use the preview URL as a placeholder
-      // Actually, let's assume the service handles the screenshot or we pass a placeholder URL
-      const screenshotUrl = screenshotPreview || 'placeholder-url'
+      // Upload screenshot to backend and get a persistent URL
+      const screenshotUrl = await walletService.uploadDepositScreenshot(paymentScreenshot)
+      const method = depositMethods.find(m => m.asset === selectedDepositAsset && m.enabled)
+      if (!method) {
+        setMessage({ type: 'error', text: 'Selected deposit method is not available' })
+        setLoading(false)
+        return
+      }
 
       await walletService.deposit({
-        asset: 'USDT',
+        asset: selectedDepositAsset,
         amount: parseFloat(depositAmount),
-        screenshotUrl: screenshotUrl // Added field
+        screenshotUrl: screenshotUrl,
+        address: method.address,
       })
       setMessage({ type: 'success', text: 'Deposit request submitted successfully!' })
       setDepositAmount('')
@@ -349,43 +460,67 @@ export default function Wallet() {
                 Deposit Funds
               </h2>
               <form onSubmit={handleDeposit} className="space-y-5">
-                {/* Deposit address / wallet placeholder */}
+                {/* Deposit method selection and address */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                      Deposit Network
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-gray-800/70 text-gray-200">
-                      USDT • TRC20 (Demo)
-                    </span>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        Deposit Asset
+                      </span>
+                      <select
+                        value={selectedDepositAsset}
+                        onChange={e => {
+                          const asset = e.target.value as 'USDT' | 'BTC' | 'ETH'
+                          setSelectedDepositAsset(asset)
+                          const method = depositMethods.find(m => m.asset === asset && m.enabled)
+                          if (method && method.address) {
+                            setSelectedDepositAddress(method.address)
+                          } else {
+                            setSelectedDepositAddress(DEFAULT_DEPOSIT_ADDRESSES[asset])
+                          }
+                        }}
+                        className="mt-1 w-full bg-gray-900/60 border border-gray-700/70 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        {/* Always show USDT/BTC/ETH options, but methods list controls availability */}
+                        <option value="USDT">USDT</option>
+                        <option value="BTC">BTC</option>
+                        <option value="ETH">ETH</option>
+                      </select>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-medium text-gray-400 uppercase tracking-wide block">
+                        Network
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-gray-800/70 text-gray-200 inline-block mt-1">
+                        {depositMethods.find(m => m.asset === selectedDepositAsset)?.network || '—'}
+                      </span>
+                    </div>
                   </div>
                   <div className="rounded-xl border border-gray-700/70 bg-gray-900/60 px-4 py-3">
                     <p className="text-xs text-gray-400 mb-1">Deposit Address</p>
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-mono text-gray-100 break-all">
-                        TXX8C6D4PLH8XXXXPLACEHOLDERXXXXWALLET
+                        {selectedDepositAddress || 'No address configured'}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigator.clipboard?.writeText(
-                            'TXX8C6D4PLH8XXXXPLACEHOLDERXXXXWALLET',
-                          )
-                        }
-                        className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors whitespace-nowrap"
-                      >
-                        Copy
-                      </button>
+                      {selectedDepositAddress && (
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard?.writeText(selectedDepositAddress)}
+                          className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors whitespace-nowrap"
+                        >
+                          Copy
+                        </button>
+                      )}
                     </div>
                     <p className="mt-2 text-[11px] text-amber-300/80">
-                      Send only USDT to this address. Network and address are placeholders for demo
-                      purposes.
+                      Send only {selectedDepositAsset} to this address. Deposits are converted and credited in
+                      USDT to your wallet.
                     </p>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Amount (USDT)
+                    Amount ({selectedDepositAsset})
                   </label>
                   <input
                     type="number"
@@ -397,8 +532,22 @@ export default function Wallet() {
                     className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                     placeholder="Enter amount"
                   />
-                  <p className="text-xs text-gray-400 mt-2">
-                    Deposit requests require admin approval
+                  {selectedDepositAsset !== 'USDT' && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      {estimatedUsdt && !priceLoading
+                        ? `Estimated credit: ≈ ${estimatedUsdt.toFixed(2)} USDT (final amount may vary slightly based on market price at approval).`
+                        : priceLoading
+                          ? 'Fetching latest price to estimate credited USDT...'
+                          : 'Enter an amount to see the estimated USDT that will be credited.'}
+                    </p>
+                  )}
+                  {selectedDepositAsset === 'USDT' && depositAmount && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      You will be credited approximately {parseFloat(depositAmount || '0').toFixed(2)} USDT.
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Deposit requests require admin approval.
                   </p>
                 </div>
                 {/* Payment confirmation / screenshot section */}

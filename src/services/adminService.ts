@@ -141,6 +141,23 @@ export interface Pagination {
     totalPages: number
 }
 
+// ─────────────────────────────────────────── Helpers ────────────────────────────────────────
+/**
+ * Resolves a screenshot URL to a full URL if it's relative.
+ */
+export const resolveScreenshotUrl = (url?: string): string | undefined => {
+    if (!url) return undefined
+    if (url.startsWith('http')) return url
+
+    // Fallback to construction based on VITE_API_URL or current host
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const baseUrl = apiUrl.replace(/\/api$/, '')
+
+    // Ensure relative path starts with /
+    const relativePath = url.startsWith('/') ? url : `/${url}`
+    return `${baseUrl}${relativePath}`
+}
+
 // ─────────────────────────────────────────── Service ──────────────────────────────────────────
 
 export const adminService = {
@@ -230,7 +247,13 @@ export const adminService = {
 
     async getUserTransactions(id: string, params?: { page?: number; limit?: number; type?: string }): Promise<{ data: AdminTransaction[]; pagination: Pagination }> {
         const r = await api.get<{ success: boolean; data: AdminTransaction[]; pagination: Pagination }>(`/admin/users/${id}/transactions`, { params })
-        return { data: r.data.data, pagination: r.data.pagination }
+        return {
+            data: (r.data.data || []).map(t => ({
+                ...t,
+                screenshotUrl: resolveScreenshotUrl(t.screenshotUrl)
+            })),
+            pagination: r.data.pagination
+        }
     },
 
     async addUserNote(id: string, note: string): Promise<void> {
@@ -240,12 +263,18 @@ export const adminService = {
     // ── Transactions ──────────────────────────────────────────────────────────
     async getPendingDeposits(): Promise<AdminTransaction[]> {
         const r = await api.get<{ success: boolean; data: AdminTransaction[] }>('/admin/deposits/pending')
-        return r.data.data
+        return (r.data.data || []).map(t => ({
+            ...t,
+            screenshotUrl: resolveScreenshotUrl(t.screenshotUrl)
+        }))
     },
 
     async getPendingWithdrawals(): Promise<AdminTransaction[]> {
         const r = await api.get<{ success: boolean; data: AdminTransaction[] }>('/admin/withdrawals/pending')
-        return r.data.data
+        return (r.data.data || []).map(t => ({
+            ...t,
+            screenshotUrl: resolveScreenshotUrl(t.screenshotUrl)
+        }))
     },
 
     async approveDeposit(id: string, notes?: string): Promise<void> {
@@ -387,7 +416,13 @@ export const adminService = {
         page?: number; limit?: number; type?: string; status?: string; userId?: string
     }): Promise<{ data: AdminTransaction[]; pagination: Pagination }> {
         const r = await api.get<{ success: boolean; data: AdminTransaction[]; pagination: Pagination }>('/admin/transactions/history', { params })
-        return { data: r.data.data, pagination: r.data.pagination }
+        return {
+            data: (r.data.data || []).map(t => ({
+                ...t,
+                screenshotUrl: resolveScreenshotUrl(t.screenshotUrl)
+            })),
+            pagination: r.data.pagination
+        }
     },
 
     // ── KYC ───────────────────────────────────────────────────────
