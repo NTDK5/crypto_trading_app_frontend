@@ -1,5 +1,5 @@
-// Binance real-time market data service
-// Uses WebSocket streams for live data; REST API for initial + historical data
+// Market data service (backend-mediated).
+// IMPORTANT: Frontend must not call Binance directly.
 
 export interface BinanceTicker {
   symbol: string
@@ -40,52 +40,50 @@ export interface CandlestickData {
   volume: number
 }
 
-const BINANCE_REST = 'https://api.binance.com/api/v3'
-const BINANCE_WS = 'wss://stream.binance.com:9443/ws'
+import api from './api'
 
 // ─── REST helpers ───────────────────────────────────────────────────────────
 
 export const binanceService = {
   /** 24 hr ticker for one symbol */
   async getTicker(symbol: string): Promise<BinanceTicker> {
-    const r = await fetch(`${BINANCE_REST}/ticker/24hr?symbol=${symbol}`)
-    if (!r.ok) throw new Error(`Failed to fetch ticker for ${symbol}`)
-    const d = await r.json()
+    const r = await api.get<{ success: boolean; data: any }>(`/market/${symbol}/ticker`)
+    const d = r.data.data
     return {
       symbol: d.symbol,
-      price: d.lastPrice,
-      priceChangePercent: d.priceChangePercent,
-      highPrice: d.highPrice,
-      lowPrice: d.lowPrice,
-      volume: d.volume,
-      quoteVolume: d.quoteVolume,
+      price: String(d.price ?? d.lastPrice ?? '0'),
+      priceChangePercent: String(d.priceChangePercent ?? '0'),
+      highPrice: String(d.highPrice ?? '0'),
+      lowPrice: String(d.lowPrice ?? '0'),
+      volume: String(d.volume ?? '0'),
+      quoteVolume: String(d.quoteVolume ?? '0'),
     }
   },
 
   /** All USDT-quoted tickers, sorted by quote volume (descending) */
   async getAllTickers(): Promise<BinanceTicker[]> {
-    const r = await fetch(`${BINANCE_REST}/ticker/24hr`)
-    if (!r.ok) throw new Error('Failed to fetch tickers')
-    const data = await r.json()
+    const r = await api.get<{ success: boolean; data: any[] }>('/market/tickers/24hr')
+    const data = r.data.data || []
     return (data as any[])
-      .filter(t => t.symbol.endsWith('USDT'))
+      .filter(t => String(t.symbol || '').endsWith('USDT'))
       .map(t => ({
         symbol: t.symbol,
-        price: t.lastPrice,
-        priceChangePercent: t.priceChangePercent,
-        highPrice: t.highPrice,
-        lowPrice: t.lowPrice,
-        volume: t.volume,
-        quoteVolume: t.quoteVolume,
+        price: String(t.lastPrice ?? t.price ?? '0'),
+        priceChangePercent: String(t.priceChangePercent ?? '0'),
+        highPrice: String(t.highPrice ?? '0'),
+        lowPrice: String(t.lowPrice ?? '0'),
+        volume: String(t.volume ?? '0'),
+        quoteVolume: String(t.quoteVolume ?? '0'),
       }))
       .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
   },
 
   /** Historical kline data */
   async getCandlesticks(symbol: string, interval = '1m', limit = 500): Promise<CandlestickData[]> {
-    const r = await fetch(`${BINANCE_REST}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`)
-    if (!r.ok) throw new Error(`Failed to fetch candles for ${symbol}`)
-    const data = await r.json()
+    const r = await api.get<{ success: boolean; data: any[][] }>(`/market/${symbol}/klines`, {
+      params: { interval, limit },
+    })
+    const data = r.data.data || []
     return (data as any[][]).map(k => ({
       time: k[0] / 1000,
       open: parseFloat(k[1]),
@@ -98,14 +96,14 @@ export const binanceService = {
 
   /** Order book snapshot */
   async getOrderBook(symbol: string, limit = 20): Promise<BinanceOrderBook> {
-    const r = await fetch(`${BINANCE_REST}/depth?symbol=${symbol}&limit=${limit}`)
-    if (!r.ok) throw new Error(`Failed to fetch order book for ${symbol}`)
-    const d = await r.json()
-    return { lastUpdateId: d.lastUpdateId, bids: d.bids, asks: d.asks }
+    const r = await api.get<{ success: boolean; data: BinanceOrderBook }>(`/market/${symbol}/depth`, {
+      params: { limit },
+    })
+    return r.data.data
   },
 }
 
-// ─── WebSocket manager ──────────────────────────────────────────────────────
+// ─── Realtime-ish helpers (polling, no Binance WS in frontend) ───────────────
 
 type BookCallback = (book: BinanceOrderBook) => void
 type KlineCallback = (candle: CandlestickData, isFinal: boolean) => void
@@ -125,24 +123,25 @@ export function subscribeMiniTickers(
   symbols: string[],
   onTicker: (symbol: string, price: number, changePct: number) => void,
 ): WSHandle {
-  const streams = symbols.map(s => `${s.toLowerCase()}@miniTicker`).join('/')
-  const url = `${BINANCE_WS}/${streams}`
-  const ws = new WebSocket(url)
-
-  ws.onmessage = (ev) => {
+  let closed = false
+  const poll = async () => {
     try {
-      const raw = JSON.parse(ev.data)
-      // combined stream wraps in { stream, data }
-      const d = raw.data ?? raw
-      if (d.e === '24hrMiniTicker') {
-        onTicker(d.s, parseFloat(d.c), parseFloat(d.P ?? '0'))
-      }
+      const tickers = await binanceService.getAllTickers()
+      if (closed) return
+      const wanted = new Set(symbols.map(s => s.toUpperCase()))
+      tickers
+        .filter(t => wanted.has(t.symbol.toUpperCase()))
+        .forEach(t => onTicker(t.symbol, parseFloat(t.price), parseFloat(t.priceChangePercent || '0')))
     } catch { /* ignore */ }
   }
-
-  ws.onerror = (e) => console.warn('[WS miniTicker] error', e)
-
-  return { close: () => ws.close() }
+  poll()
+  const id = setInterval(poll, 1500)
+  return {
+    close: () => {
+      closed = true
+      clearInterval(id)
+    },
+  }
 }
 
 /**
@@ -153,28 +152,21 @@ export function subscribeTicker(
   symbol: string,
   onTicker: (t: BinanceTicker) => void,
 ): WSHandle {
-  const ws = new WebSocket(`${BINANCE_WS}/${symbol.toLowerCase()}@ticker`)
-
-  ws.onmessage = (ev) => {
+  let closed = false
+  const poll = async () => {
     try {
-      const d = JSON.parse(ev.data)
-      if (d.e === '24hrTicker') {
-        onTicker({
-          symbol: d.s,
-          price: d.c,
-          priceChangePercent: d.P,
-          highPrice: d.h,
-          lowPrice: d.l,
-          volume: d.v,
-          quoteVolume: d.q,
-        })
-      }
+      const t = await binanceService.getTicker(symbol)
+      if (!closed) onTicker(t)
     } catch { /* ignore */ }
   }
-
-  ws.onerror = (e) => console.warn('[WS ticker] error', e)
-
-  return { close: () => ws.close() }
+  poll()
+  const id = setInterval(poll, 1000)
+  return {
+    close: () => {
+      closed = true
+      clearInterval(id)
+    },
+  }
 }
 
 /**
@@ -186,23 +178,21 @@ export function subscribeOrderBook(
   onBook: BookCallback,
   depth = 10,
 ): WSHandle {
-  // Use partial book depth stream (no need to maintain local orderbook state)
-  const ws = new WebSocket(`${BINANCE_WS}/${symbol.toLowerCase()}@depth${depth}@100ms`)
-
-  ws.onmessage = (ev) => {
+  let closed = false
+  const poll = async () => {
     try {
-      const d = JSON.parse(ev.data)
-      onBook({
-        lastUpdateId: d.lastUpdateId ?? 0,
-        bids: d.bids ?? [],
-        asks: d.asks ?? [],
-      })
+      const book = await binanceService.getOrderBook(symbol, depth)
+      if (!closed) onBook(book)
     } catch { /* ignore */ }
   }
-
-  ws.onerror = (e) => console.warn('[WS depth] error', e)
-
-  return { close: () => ws.close() }
+  poll()
+  const id = setInterval(poll, 1000)
+  return {
+    close: () => {
+      closed = true
+      clearInterval(id)
+    },
+  }
 }
 
 /**
@@ -215,29 +205,24 @@ export function subscribeKline(
   interval: string,
   onCandle: KlineCallback,
 ): WSHandle {
-  const ws = new WebSocket(`${BINANCE_WS}/${symbol.toLowerCase()}@kline_${interval}`)
-
-  ws.onmessage = (ev) => {
+  let closed = false
+  let lastLen = 0
+  const poll = async () => {
     try {
-      const d = JSON.parse(ev.data)
-      if (d.e === 'kline') {
-        const k = d.k
-        onCandle(
-          {
-            time: k.t / 1000,
-            open: parseFloat(k.o),
-            high: parseFloat(k.h),
-            low: parseFloat(k.l),
-            close: parseFloat(k.c),
-            volume: parseFloat(k.v),
-          },
-          k.x, // isFinal
-        )
-      }
+      const candles = await binanceService.getCandlesticks(symbol, interval, 500)
+      if (closed) return
+      if (candles.length === 0) return
+      const isFinal = candles.length !== lastLen
+      lastLen = candles.length
+      onCandle(candles[candles.length - 1], isFinal)
     } catch { /* ignore */ }
   }
-
-  ws.onerror = (e) => console.warn('[WS kline] error', e)
-
-  return { close: () => ws.close() }
+  poll()
+  const id = setInterval(poll, 2500)
+  return {
+    close: () => {
+      closed = true
+      clearInterval(id)
+    },
+  }
 }

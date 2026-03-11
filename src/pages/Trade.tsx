@@ -14,6 +14,7 @@ import OrderBook from '../components/OrderBook'
 import CandlestickChart from '../components/CandlestickChart'
 import TradePanel from '../components/trading/TradePanel'
 
+
 const TIMEFRAMES = [
   { label: '1m', value: '1m' },
   { label: '5m', value: '5m' },
@@ -47,7 +48,7 @@ export default function Trade() {
   const bookWsRef = useRef<{ close: () => void } | null>(null)
   const klineWsRef = useRef<{ close: () => void } | null>(null)
 
-  /* ── Fetch all markets once (REST + periodic refresh) ──────── */
+  // WS cleanup refs
   useEffect(() => {
     const fetchMarkets = async () => {
       try {
@@ -152,7 +153,7 @@ export default function Trade() {
       <div className="flex flex-col lg:flex-row flex-1 overflow-x-hidden lg:overflow-hidden">
 
         {/* ── Market List Panel ─────────────────────────────────── */}
-        <div className="w-full lg:w-72 lg:flex-shrink-0 border-b border-gray-800 lg:border-b-0 lg:border-r border-gray-800 flex flex-col h-[300px] lg:h-full">
+        <div className="w-full lg:w-72 lg:flex-shrink-0 border-b border-gray-800 lg:border-b-0 lg:border-r flex flex-col h-[300px] lg:h-full">
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <MarketList
               markets={markets}
@@ -187,8 +188,8 @@ export default function Trade() {
                   <span className="text-sm text-gray-500 font-mono">USD</span>
                   <span
                     className={`text-sm font-semibold px-2 py-0.5 rounded-lg ${priceChange24h >= 0
-                        ? 'text-green-400 bg-green-500/10 border border-green-500/20'
-                        : 'text-red-400 bg-red-500/10 border border-red-500/20'
+                      ? 'text-green-400 bg-green-500/10 border border-green-500/20'
+                      : 'text-red-400 bg-red-500/10 border border-red-500/20'
                       }`}
                   >
                     {priceChange24h >= 0 ? '↑' : '↓'} {priceChange24h >= 0 ? '+' : ''}
@@ -218,8 +219,8 @@ export default function Trade() {
                     key={tf.value}
                     onClick={() => setTimeframe(tf.value)}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${timeframe === tf.value
-                        ? 'bg-cyan-500 text-white'
-                        : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
+                      ? 'bg-cyan-500 text-white'
+                      : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
                       }`}
                   >
                     {tf.label}

@@ -334,20 +334,26 @@ export default function Wallet() {
         {/* Action Buttons */}
         <div className="flex justify-center items-center space-x-6 mb-8">
           <button
-            onClick={() => setShowDeposit(true)}
-            className="flex flex-col items-center space-y-2 group"
+            onClick={() => {
+              setShowDeposit(true)
+            }}
+            title="Deposit"
+            className={`flex flex-col items-center space-y-2 group`}
           >
-            <div className="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-colors">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors bg-orange-500 hover:bg-orange-600`}>
               <ArrowDownLeft className="w-6 h-6 text-white" />
             </div>
             <span className="text-gray-300 text-sm">Deposit</span>
           </button>
 
           <button
-            onClick={() => setShowWithdraw(true)}
-            className="flex flex-col items-center space-y-2 group"
+            onClick={() => {
+              setShowWithdraw(true)
+            }}
+            title="Withdraw"
+            className={`flex flex-col items-center space-y-2 group`}
           >
-            <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600 transition-colors">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors bg-gray-700 hover:bg-gray-600`}>
               <ArrowUpRight className="w-6 h-6 text-white" />
             </div>
             <span className="text-gray-300 text-sm">Withdraw</span>
@@ -578,7 +584,7 @@ export default function Wallet() {
                           setScreenshotPreview(url)
                         } else {
                           setPaymentScreenshot(null)
-                          setScreenshotPreview(null)
+                          setScreenshotPreview(url)
                         }
                       }}
                     />
@@ -741,6 +747,6 @@ export default function Wallet() {
           </div>
         )
       }
-    </div >
+    </div>
   )
 }

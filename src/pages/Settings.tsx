@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   Shield, 
   Lock, 
@@ -27,6 +28,7 @@ type SecuritySubTab = 'login' | 'funds'
 
 export default function Settings() {
   const { user, refreshUser } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabType>('dashboard')
   const [activeSecurityTab, setActiveSecurityTab] = useState<SecuritySubTab>('login')
   
@@ -687,8 +689,25 @@ export default function Settings() {
 
         {/* Identity Verification Tab - Placeholder */}
         {activeTab === 'identity' && (
-          <div className="bg-gray-800/50 rounded-xl p-8 border border-gray-700/50 text-center">
-            <p className="text-gray-400">Identity Verification feature coming soon...</p>
+          <div className="bg-gray-800/50 rounded-xl p-8 border border-gray-700/50">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-white font-semibold">Identity verification (KYC)</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Status: <span className="text-gray-200 font-medium">{(user as any)?.kycStatus || 'UNVERIFIED'}</span>
+                </p>
+                <p className="text-gray-500 text-sm mt-2">
+                  Complete identity verification to unlock trading, deposits, and withdrawals.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/app/settings/identity-verification')}
+                className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition"
+              >
+                Verify Identity
+              </button>
+            </div>
           </div>
         )}
 

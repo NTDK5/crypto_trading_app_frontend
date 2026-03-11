@@ -83,11 +83,91 @@ function AdjustBalanceModal({ user, onClose, onSuccess }: { user: AdminUser; onC
 }
 
 function UserSlideOver({ user, onClose, onAction }: { user: AdminUser; onClose: () => void; onAction: (type: string) => void }) {
+    const [showKycModal, setShowKycModal] = useState(false)
 
     return (
         <div className="fixed inset-0 z-40 flex justify-end">
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <div className="relative w-[460px] bg-[#0d1117] border-l border-white/10 h-full overflow-y-auto shadow-2xl">
+                {showKycModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/70" onClick={() => setShowKycModal(false)} />
+                        <div className="relative w-full max-w-3xl mx-4 bg-[#0d1117] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                                <div>
+                                    <p className="text-white font-semibold">KYC Submission</p>
+                                    <p className="text-slate-500 text-xs">{user.email}</p>
+                                </div>
+                                <button onClick={() => setShowKycModal(false)} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Details</p>
+                                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-4 text-sm space-y-2">
+                                        <div className="flex justify-between gap-4">
+                                            <span className="text-slate-500">Full name</span>
+                                            <span className="text-white font-medium text-right">{(user as any)?.identityVerification?.fullName || (user as any)?.kycData?.fullName || '—'}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-4">
+                                            <span className="text-slate-500">Date of birth</span>
+                                            <span className="text-white font-medium text-right">{(user as any)?.identityVerification?.dateOfBirth ? new Date((user as any).identityVerification.dateOfBirth).toLocaleDateString() : ((user as any)?.kycData?.dateOfBirth || '—')}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-4">
+                                            <span className="text-slate-500">Document type</span>
+                                            <span className="text-white font-medium text-right">{(user as any)?.identityVerification?.documentType || (user as any)?.kycData?.documentType || (user as any)?.kycData?.idType || '—'}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-4">
+                                            <span className="text-slate-500">Document number</span>
+                                            <span className="text-white font-medium text-right">{(user as any)?.identityVerification?.documentNumber || (user as any)?.kycData?.documentNumber || (user as any)?.kycData?.idNumber || '—'}</span>
+                                        </div>
+                                    </div>
+                                    {((user as any).kycStatus !== 'UNVERIFIED' && (user as any).kycStatus !== 'APPROVED') && (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => onAction('kyc-approve')}
+                                                className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 rounded-lg transition-colors"
+                                            >
+                                                <CheckCircle size={12} /> Approve
+                                            </button>
+                                            <button
+                                                onClick={() => onAction('kyc-reject')}
+                                                className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 rounded-lg transition-colors"
+                                            >
+                                                <XCircle size={12} /> Reject
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Documents</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {[
+                                            { label: 'ID Front', url: (user as any)?.identityVerification?.idFrontUrl || (user as any)?.kycData?.idFrontUrl },
+                                            { label: 'ID Back', url: (user as any)?.identityVerification?.idBackUrl || (user as any)?.kycData?.idBackUrl },
+                                            { label: 'Selfie', url: (user as any)?.identityVerification?.selfieUrl || (user as any)?.kycData?.selfieUrl },
+                                        ].map((img) => (
+                                            <div key={img.label} className="bg-white/[0.03] border border-white/5 rounded-lg overflow-hidden">
+                                                <div className="px-3 py-2 text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">{img.label}</div>
+                                                {img.url ? (
+                                                    <a href={img.url} target="_blank" rel="noreferrer" className="block">
+                                                        <img src={img.url} alt={img.label} className="w-full h-48 object-cover" />
+                                                    </a>
+                                                ) : (
+                                                    <div className="h-48 flex items-center justify-center text-xs text-slate-600">No image</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-slate-600">Click an image to open full size.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {/* Header */}
                 <div className="sticky top-0 bg-[#0d1117] border-b border-white/5 px-6 py-4 flex items-center justify-between z-10">
                     <div>
@@ -170,20 +250,29 @@ function UserSlideOver({ user, onClose, onAction }: { user: AdminUser; onClose: 
                                 <p className="text-red-400">{(user as any).kycRejectedReason}</p>
                             </div>
                         )}
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => onAction('kyc-approve')}
-                                className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 rounded-lg transition-colors"
-                            >
-                                <CheckCircle size={12} /> Approve KYC
-                            </button>
-                            <button
-                                onClick={() => onAction('kyc-reject')}
-                                className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 rounded-lg transition-colors"
-                            >
-                                <XCircle size={12} /> Reject KYC
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowKycModal(true)}
+                            className="w-full mb-3 px-3 py-2 text-xs text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+                        >
+                            View KYC documents
+                        </button>
+                        {((user as any).kycStatus !== 'UNVERIFIED' && (user as any).kycStatus !== 'APPROVED') && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => onAction('kyc-approve')}
+                                    className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 rounded-lg transition-colors"
+                                >
+                                    <CheckCircle size={12} /> Approve KYC
+                                </button>
+                                <button
+                                    onClick={() => onAction('kyc-reject')}
+                                    className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 rounded-lg transition-colors"
+                                >
+                                    <XCircle size={12} /> Reject KYC
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Actions */}
@@ -464,13 +553,18 @@ export default function AdminUsers() {
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {(() => {
-                                            const kyc = (user as any).kycStatus || 'UNVERIFIED'
-                                            if (kyc === 'APPROVED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5">✓ Verified</span>
-                                            if (kyc === 'REJECTED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">✗ Rejected</span>
-                                            if (kyc === 'UNVERIFIED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 bg-gray-500/10 border border-gray-500/20 rounded px-1.5 py-0.5">✗ Unverified</span>
-                                            return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">⏳ Pending</span>
-                                        })()}
+                                        <div className="flex flex-col gap-1">
+                                            {(() => {
+                                                const kyc = (user as any).kycStatus || 'UNVERIFIED'
+                                                if (kyc === 'APPROVED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5 w-fit">✓ Verified</span>
+                                                if (kyc === 'REJECTED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5 w-fit">✗ Rejected</span>
+                                                if (kyc === 'UNVERIFIED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 bg-gray-500/10 border border-gray-500/20 rounded px-1.5 py-0.5 w-fit">✗ Unverified</span>
+                                                return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5 w-fit">⏳ Pending</span>
+                                            })()}
+                                            {(user as any).kycStatus && (user as any).kycStatus !== 'UNVERIFIED' && (
+                                                <span className="text-[9px] text-blue-400 font-medium px-1">KYC Submitted</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-4 py-3">
                                         <StatusBadge status={user.flags?.tradingFrozen ? 'DISABLED' : 'ACTIVE'} dot />

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import api from '../services/api'
 
 interface CryptoData {
   id: string
@@ -35,7 +36,7 @@ export function useCryptoWebSocket(options: UseCryptoWebSocketOptions = {}) {
           id: symbol,
           symbol: symbol.toUpperCase(),
           name: symbol.charAt(0).toUpperCase() + symbol.slice(1),
-          current_price: parseFloat(ticker.lastPrice) || 0,
+          current_price: parseFloat(ticker.lastPrice ?? ticker.price) || 0,
           price_change_percentage_24h: parseFloat(ticker.priceChangePercent) || 0,
           high_24h: parseFloat(ticker.highPrice) || 0,
           low_24h: parseFloat(ticker.lowPrice) || 0,
@@ -47,24 +48,11 @@ export function useCryptoWebSocket(options: UseCryptoWebSocketOptions = {}) {
       .sort((a: CryptoData, b: CryptoData) => b.total_volume - a.total_volume)
   }
 
-  // Fetch data from Binance API
+  // Fetch data from backend market endpoint (no direct Binance calls).
   const fetchMarketData = async () => {
     try {
-      const response = await fetch('https://api.binance.com/api/v3/ticker/24hr', {
-        method: 'GET',
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'accept': 'application/json, text/plain, */*',
-        },
-      })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const binanceData = await response.json()
-      const mappedData = mapBinanceData(binanceData)
+      const r = await api.get<{ success: boolean; data: any[] }>('/market/tickers/24hr')
+      const mappedData = mapBinanceData(r.data.data || [])
       
       if (isMountedRef.current) {
         setCryptoData(mappedData)

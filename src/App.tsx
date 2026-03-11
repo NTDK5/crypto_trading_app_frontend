@@ -9,6 +9,7 @@ import Trade from './pages/Trade'
 import Wallet from './pages/Wallet'
 import Market from './pages/Market'
 import Settings from './pages/Settings'
+import IdentityVerification from './pages/IdentityVerification'
 import Layout from './components/Layout'
 import AdminLayout from './components/AdminLayout'
 import AdminDashboard from './pages/AdminDashboard'
@@ -62,6 +63,7 @@ function App() {
             <Route path="market" element={<Market />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="settings/identity-verification" element={<IdentityVerification />} />
           </Route>
           <Route path="/maintenance" element={<Maintenance />} />
           {/* Fallback for unknown routes inside SPA */}

@@ -48,6 +48,21 @@ export interface AdminUser {
     adminRole?: string
     isActive: boolean
     isVerified: boolean
+    identityVerification?: {
+        id: string
+        fullName: string
+        dateOfBirth: string
+        documentType: string
+        documentNumber: string
+        idFrontUrl: string
+        idBackUrl: string
+        selfieUrl: string
+        status: string
+        rejectionReason?: string | null
+        submittedAt: string
+        reviewedAt?: string | null
+        reviewedBy?: string | null
+    } | null
     createdAt: string
     wallets: Array<{ asset: string; balance: number; lockedBalance: number }>
     flags?: {

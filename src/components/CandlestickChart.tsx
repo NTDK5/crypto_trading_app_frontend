@@ -57,53 +57,18 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
 
     chartRef.current = chart
 
-    // Add candlestick series - use addSeries with proper series definition
-    // In v5, series definitions need to be passed to addSeries
-    // Try accessing them from the module or use type assertion
     const chartAny = chart as any
-    let candlestickSeriesInstance: ISeriesApi<'Candlestick'>
-
-    // Try new API first
-    if (chartAny.addSeries && typeof chartAny.addSeries === 'function') {
-      // Try to get series definition from module
-      const seriesDef = (LightweightCharts as any).CandlestickSeries ||
-        (LightweightCharts as any).candlestickSeries ||
-        { type: 'Candlestick' }
-
-      try {
-        candlestickSeriesInstance = chart.addSeries(seriesDef, {
-          upColor: '#10b981',
-          downColor: '#ef4444',
-          borderVisible: false,
-          wickUpColor: '#10b981',
-          wickDownColor: '#ef4444',
-        }) as ISeriesApi<'Candlestick'>
-      } catch (e) {
-        // If that fails, try with the old API
-        if (chartAny.addCandlestickSeries) {
-          candlestickSeriesInstance = chartAny.addCandlestickSeries({
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderVisible: false,
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
-          })
-        } else {
-          throw e
-        }
-      }
-    } else if (chartAny.addCandlestickSeries) {
-      // Use old API if available
-      candlestickSeriesInstance = chartAny.addCandlestickSeries({
-        upColor: '#10b981',
-        downColor: '#ef4444',
-        borderVisible: false,
-        wickUpColor: '#10b981',
-        wickDownColor: '#ef4444',
-      })
-    } else {
-      throw new Error('No valid chart API found')
+    if (!chartAny.addCandlestickSeries || !chartAny.addLineSeries) {
+      throw new Error('Chart series APIs unavailable')
     }
+
+    const candlestickSeriesInstance: ISeriesApi<'Candlestick'> = chartAny.addCandlestickSeries({
+      upColor: '#10b981',
+      downColor: '#ef4444',
+      borderVisible: false,
+      wickUpColor: '#10b981',
+      wickDownColor: '#ef4444',
+    })
 
     candlestickSeriesRef.current = candlestickSeriesInstance
 
@@ -130,87 +95,36 @@ export default function CandlestickChart({ data, height = 500 }: CandlestickChar
 
       // Add MA7 (yellow)
       if (ma7Data.length > 0) {
-        const LineSeriesDef = (LightweightCharts as any).LineSeries || (LightweightCharts as any).lineSeries
-        let ma7SeriesInstance: ISeriesApi<'Line'>
-
-        try {
-          ma7SeriesInstance = chart.addSeries(LineSeriesDef || { type: 'Line' }, {
-            color: '#eab308',
-            lineWidth: 1,
-            priceLineVisible: false,
-            lastValueVisible: true,
-          }) as ISeriesApi<'Line'>
-        } catch (e) {
-          // Fallback to old API
-          if (chartAny.addLineSeries) {
-            ma7SeriesInstance = chartAny.addLineSeries({
-              color: '#eab308',
-              lineWidth: 1,
-              priceLineVisible: false,
-              lastValueVisible: true,
-            })
-          } else {
-            throw e
-          }
-        }
+        const ma7SeriesInstance: ISeriesApi<'Line'> = chartAny.addLineSeries({
+          color: '#eab308',
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        })
         ma7SeriesInstance.setData(ma7Data)
         ma7SeriesRef.current = ma7SeriesInstance
       }
 
       // Add MA14 (blue)
       if (ma14Data.length > 0) {
-        const LineSeriesDef = (LightweightCharts as any).LineSeries || (LightweightCharts as any).lineSeries
-        let ma14SeriesInstance: ISeriesApi<'Line'>
-
-        try {
-          ma14SeriesInstance = chart.addSeries(LineSeriesDef || { type: 'Line' }, {
-            color: '#3b82f6',
-            lineWidth: 1,
-            priceLineVisible: false,
-            lastValueVisible: true,
-          }) as ISeriesApi<'Line'>
-        } catch (e) {
-          // Fallback to old API
-          if (chartAny.addLineSeries) {
-            ma14SeriesInstance = chartAny.addLineSeries({
-              color: '#3b82f6',
-              lineWidth: 1,
-              priceLineVisible: false,
-              lastValueVisible: true,
-            })
-          } else {
-            throw e
-          }
-        }
+        const ma14SeriesInstance: ISeriesApi<'Line'> = chartAny.addLineSeries({
+          color: '#3b82f6',
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        })
         ma14SeriesInstance.setData(ma14Data)
         ma14SeriesRef.current = ma14SeriesInstance
       }
 
       // Add MA28 (purple)
       if (ma28Data.length > 0) {
-        const LineSeriesDef = (LightweightCharts as any).LineSeries || (LightweightCharts as any).lineSeries
-        let ma28SeriesInstance: ISeriesApi<'Line'>
-
-        try {
-          ma28SeriesInstance = chart.addSeries(LineSeriesDef || { type: 'Line' }, {
-            color: '#a855f7',
-            lineWidth: 1,
-            priceLineVisible: false,
-            lastValueVisible: true,
-          }) as ISeriesApi<'Line'>
-        } catch (e) {
-          // Fallback to old API
-          if (chartAny.addLineSeries) {
-            ma28SeriesInstance = chartAny.addLineSeries({
-              color: '#a855f7',
-              lineWidth: 1,
-              priceLineVisible: false,
-              lastValueVisible: true,
-            })
-          } else {
-            throw e
-          }
-        }
+        const ma28SeriesInstance: ISeriesApi<'Line'> = chartAny.addLineSeries({
+          color: '#a855f7',
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        })
         ma28SeriesInstance.setData(ma28Data)
         ma28SeriesRef.current = ma28SeriesInstance
       }

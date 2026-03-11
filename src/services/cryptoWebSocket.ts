@@ -14,11 +14,6 @@ class CryptoWebSocketService {
   private ws: WebSocket | null = null
   private subscribers: Set<PriceUpdateCallback> = new Set()
   private priceData: Map<string, PriceUpdate> = new Map()
-  private symbols: string[] = []
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 3000
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   // Map CoinGecko IDs to Binance symbols
   private symbolMap: Record<string, string> = {
@@ -65,7 +60,6 @@ class CryptoWebSocketService {
   }
 
   connect(symbols: string[]) {
-    this.symbols = symbols
     this.disconnect()
 
     // Convert CoinGecko symbols to Binance symbols
@@ -78,63 +72,57 @@ class CryptoWebSocketService {
       return
     }
 
-    // Create stream names (lowercase for Binance)
-    const streams = binanceSymbols.map((s) => `${s.toLowerCase()}@ticker`).join('/')
-    const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`
+    // Frontend must not connect to Binance WebSocket.
+    // Use polling via backend endpoint; this class keeps the same interface.
+    this.startPolling(binanceSymbols)
+  }
 
-    try {
-      this.ws = new WebSocket(wsUrl)
+  private pollTimer: ReturnType<typeof setInterval> | null = null
 
-      this.ws.onopen = () => {
-        console.log('WebSocket connected')
-        this.reconnectAttempts = 0
-      }
-
-      this.ws.onmessage = (event) => {
+  private startPolling(binanceSymbols: string[]) {
+    // Lazy import to avoid circular deps
+    import('./api').then(({ default: api }) => {
+      const poll = async () => {
         try {
-          const message = JSON.parse(event.data)
-          // Binance stream format: { stream: "btcusdt@ticker", data: {...} }
-          if (message.stream && message.data) {
-            this.handlePriceUpdate(message.data)
-          } else if (message.s) {
-            // Direct ticker data
-            this.handlePriceUpdate(message)
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error)
+          const r = await api.get<{ success: boolean; data: any[] }>('/market/tickers/24hr')
+          const data = r.data.data || []
+          const wanted = new Set(binanceSymbols.map(s => s.toUpperCase()))
+          data
+            .filter((d: any) => wanted.has(String(d.symbol || '').toUpperCase()))
+            .forEach((d: any) => this.handlePriceUpdate(d))
+        } catch {
+          // ignore; UI will keep last known values
         }
       }
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-      }
-
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected')
-        this.ws = null
-        this.attemptReconnect()
-      }
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error)
-      this.attemptReconnect()
-    }
+      poll()
+      this.pollTimer = setInterval(poll, 1500)
+    })
   }
 
   private handlePriceUpdate(data: any) {
-    if (!data.s) return // Invalid data format
+    const symbolField = data?.s || data?.symbol
+    if (!symbolField) return // Invalid data format
 
     // Extract symbol (e.g., "BTCUSDT" -> "btc")
-    const fullSymbol = data.s
+    const fullSymbol = String(symbolField)
     const symbol = fullSymbol.replace('USDT', '').toLowerCase()
     const coinGeckoId = this.reverseSymbolMap[fullSymbol.toLowerCase()] || symbol
     
-    const price = parseFloat(data.c) || 0 // Current price
-    const openPrice = parseFloat(data.o) || price // Open price (24h ago)
+    // Support both Binance WS shape (c/o/h/l/v) and backend 24hr ticker shape
+    const last = data.c ?? data.lastPrice ?? data.price
+    const open = data.o ?? data.openPrice
+    const high = data.h ?? data.highPrice
+    const low = data.l ?? data.lowPrice
+    const vol = data.v ?? data.volume
+    const quoteVol = data.q ?? data.quoteVolume
+
+    const price = parseFloat(last) || 0 // Current price
+    const openPrice = parseFloat(open) || price // Open price (24h ago)
     const priceChange = price - openPrice
     const priceChangePercent = openPrice > 0 ? ((priceChange / openPrice) * 100) : 0
-    const high24h = parseFloat(data.h) || price // 24h high
-    const low24h = parseFloat(data.l) || price // 24h low
-    const volume24h = (parseFloat(data.v) || 0) * price // 24h volume in USD
+    const high24h = parseFloat(high) || price // 24h high
+    const low24h = parseFloat(low) || price // 24h low
+    const volume24h = (parseFloat(quoteVol) || (parseFloat(vol) || 0) * price) || 0 // Prefer quote volume
 
     const update: PriceUpdate = {
       symbol,
@@ -163,20 +151,6 @@ class CryptoWebSocketService {
     })
   }
 
-  private attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached')
-      return
-    }
-
-    this.reconnectAttempts++
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
-
-    this.reconnectTimer = setTimeout(() => {
-      this.connect(this.symbols)
-    }, this.reconnectDelay)
-  }
-
   subscribe(callback: PriceUpdateCallback) {
     this.subscribers.add(callback)
     // Immediately notify with current data
@@ -188,9 +162,9 @@ class CryptoWebSocketService {
   }
 
   disconnect() {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer)
-      this.reconnectTimer = null
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer)
+      this.pollTimer = null
     }
 
     if (this.ws) {
