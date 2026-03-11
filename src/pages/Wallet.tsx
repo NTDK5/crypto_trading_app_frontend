@@ -584,7 +584,7 @@ export default function Wallet() {
                           setScreenshotPreview(url)
                         } else {
                           setPaymentScreenshot(null)
-                          setScreenshotPreview(url)
+                          setScreenshotPreview(URL.createObjectURL(new Blob()))
                         }
                       }}
                     />
