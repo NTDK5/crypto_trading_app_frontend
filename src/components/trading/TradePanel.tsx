@@ -1,524 +1,294 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowUp, ArrowDown } from 'lucide-react'
 import { marketService } from '../../services/marketService'
-import { tradeService } from '../../services/tradeService'
 import { spotTradeService } from '../../services/spotTradeService'
 import { walletService } from '../../services/walletService'
+import { tradeService } from '../../services/tradeService'
+import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react'
 
 interface TradePanelProps {
     symbol?: string
     initialAsset?: string
+    currentPrice?: number // optional live price fed from parent WebSocket
 }
 
-// Default fee rate (0.2% = 0.002) - client-side calculation only
 const DEFAULT_FEE_RATE = 0.002
 
-export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }: TradePanelProps) {
+export default function TradePanel({
+    symbol: propSymbol,
+    initialAsset = 'BTC',
+    currentPrice: wsPrice,
+}: TradePanelProps) {
     const [activeTab, setActiveTab] = useState<'spot' | 'binary'>('spot')
 
-    // Determine initial symbol and asset
     const initialSymbol = propSymbol || `${initialAsset}USDT`
-    const [symbol] = useState(initialSymbol)
-    const [asset] = useState(propSymbol ? propSymbol.replace('USDT', '') : initialAsset)
+    const asset = propSymbol ? propSymbol.replace('USDT', '') : initialAsset
 
-    const [price, setPrice] = useState(0)
-    const [balance, setBalance] = useState(0)
-    const [baseBalance, setBaseBalance] = useState(0) // Balance in base asset (BTC, ETH, etc.)
+    // Live price – prefer WebSocket price from parent, fallback to polling
+    const [polledPrice, setPolledPrice] = useState(0)
+    const price = wsPrice && wsPrice > 0 ? wsPrice : polledPrice
 
-    // Spot State
-    const [spotSide, setSpotSide] = useState<'BUY' | 'SELL'>('BUY')
-    const [spotAmount, setSpotAmount] = useState('') // Quantity in base asset for SELL, quote amount for BUY
-    const [orderType, setOrderType] = useState<'MARKET' | 'STOP' | 'LIMIT' | 'STOP_LIMIT'>('MARKET')
-    const [triggerPrice, setTriggerPrice] = useState('')
-    const [limitPrice, setLimitPrice] = useState('')
-    const [stopPrice, setStopPrice] = useState('')
-    const [stopOrders, setStopOrders] = useState<any[]>([])
-    const [limitOrders, setLimitOrders] = useState<any[]>([])
-    const [stopLimitOrders, setStopLimitOrders] = useState<any[]>([])
+    // Wallet balances
+    const [usdtBalance, setUsdtBalance] = useState(0)
+    const [baseBalance, setBaseBalance] = useState(0)
 
-    // Binary State
+    // Spot state
+    const [side, setSide] = useState<'BUY' | 'SELL'>('BUY')
+    const [amount, setAmount] = useState('') // dollar amount for BUY, or base-asset qty for SELL
+
+    // Binary state
     const [binaryDirection, setBinaryDirection] = useState<'UP' | 'DOWN' | null>(null)
     const [binaryAmount, setBinaryAmount] = useState('')
     const [binaryDuration, setBinaryDuration] = useState(60)
 
     const [loading, setLoading] = useState(false)
     const [tradingEnabled, setTradingEnabled] = useState(true)
-    const [msg, setMsg] = useState({ type: '', text: '' })
+    const [msg, setMsg] = useState<{ type: string; text: string }>({ type: '', text: '' })
 
-    // Auto-update price field when market price changes (for Limit/Stop-Limit orders)
+    /* ── Fetch price + balances ─────────────────────────────────── */
     useEffect(() => {
-        if (price > 0 && (orderType === 'LIMIT' || orderType === 'STOP_LIMIT')) {
-            if (!limitPrice || limitPrice === '0' || limitPrice === '') {
-                setLimitPrice(price.toFixed(2))
-            }
-        }
-    }, [price, orderType])
-
-    useEffect(() => {
-        const fetchMarket = async () => {
+        let cancelled = false
+        const fetchData = async () => {
             try {
-                const p = await marketService.getPrice(symbol)
-                setPrice(p)
+                const p = await marketService.getPrice(initialSymbol)
+                if (!cancelled) setPolledPrice(p)
 
                 const balances = await walletService.getBalances()
                 const usdt = balances.find(b => b.asset === 'USDT')
                 const base = balances.find(b => b.asset === asset)
-                setBalance(usdt?.available || 0)
-                setBaseBalance(base?.available || 0)
+                if (!cancelled) {
+                    setUsdtBalance(usdt?.available || 0)
+                    setBaseBalance(base?.available || 0)
+                }
 
-                // Fetch trading status
                 const status = await spotTradeService.getTradingStatus()
-                setTradingEnabled(status.enabled)
+                if (!cancelled) setTradingEnabled(status.enabled)
             } catch (e) {
                 console.error(e)
             }
         }
-        fetchMarket()
-        const interval = setInterval(fetchMarket, 2000) // Update every 2 seconds
-        return () => clearInterval(interval)
-    }, [symbol, asset])
 
-    useEffect(() => {
-        if (activeTab === 'spot') {
-            fetchStopOrders()
-            fetchLimitOrders()
-            fetchStopLimitOrders()
+        fetchData()
+        // Only poll price if no WebSocket price is provided
+        const interval = setInterval(fetchData, wsPrice ? 10000 : 3000)
+        return () => {
+            cancelled = true
+            clearInterval(interval)
         }
-    }, [activeTab, symbol])
+    }, [initialSymbol, asset, wsPrice])
 
-    const fetchStopOrders = async () => {
-        try {
-            const orders = await spotTradeService.getStopOrders(symbol.replace('USDT', '/USDT'))
-            setStopOrders(orders)
-        } catch (e) {
-            console.error("Failed to fetch stop orders", e)
-        }
-    }
+    /* ── Calculations ───────────────────────────────────────────── */
+    const calc = useMemo(() => {
+        const amt = parseFloat(amount) || 0
 
-    const fetchLimitOrders = async () => {
-        try {
-            const orders = await spotTradeService.getLimitOrders(symbol.replace('USDT', '/USDT'))
-            setLimitOrders(orders)
-        } catch (e) {
-            console.error("Failed to fetch limit orders", e)
-        }
-    }
-
-    const fetchStopLimitOrders = async () => {
-        try {
-            const orders = await spotTradeService.getStopLimitOrders(symbol.replace('USDT', '/USDT'))
-            setStopLimitOrders(orders)
-        } catch (e) {
-            console.error("Failed to fetch stop-limit orders", e)
-        }
-    }
-
-    // Client-side calculations
-    const calculatedValues = useMemo(() => {
-        const amount = parseFloat(spotAmount) || 0
-        const currentPriceValue = price || 0
-        // Use limit price if available, otherwise use market price
-        const priceValue = orderType === 'MARKET'
-            ? currentPriceValue
-            : (parseFloat(limitPrice) || currentPriceValue)
-
-        let total = 0
-        let fee = 0
-        let available = 0
-
-        if (spotSide === 'BUY') {
-            // BUY: amount is in USDT (quote currency)
-            total = amount
-            fee = amount * DEFAULT_FEE_RATE
-            available = balance
+        if (side === 'BUY') {
+            // amt is in USD
+            const fee = amt * DEFAULT_FEE_RATE
+            const total = amt + fee
+            const coinQty = price > 0 ? amt / price : 0
+            return { fee, total, coinQty, displayTotal: `${total.toFixed(2)} USDT` }
         } else {
-            // SELL: amount is in base asset (BTC, ETH, etc.)
-            total = amount * priceValue
-            fee = total * DEFAULT_FEE_RATE
-            available = baseBalance
+            // amt is qty in base asset
+            const usdValue = amt * price
+            const fee = usdValue * DEFAULT_FEE_RATE
+            const net = usdValue - fee
+            return { fee, total: usdValue, coinQty: amt, displayTotal: `≈ ${net.toFixed(2)} USDT` }
         }
+    }, [amount, price, side])
 
-        return {
-            total: total.toFixed(2),
-            fee: fee.toFixed(2),
-            available: available.toFixed(8),
-            totalWithFee: (total + fee).toFixed(2),
-        }
-    }, [spotAmount, price, limitPrice, orderType, spotSide, balance, baseBalance])
-
-    // Handle percentage button clicks
-    const handlePercentageClick = (percentage: number) => {
-        if (spotSide === 'BUY') {
-            // For BUY: percentage of USDT balance
-            const maxAmount = balance
-            const amount = (maxAmount * percentage).toFixed(2)
-            setSpotAmount(amount)
+    /* ── Percentage shortcuts ───────────────────────────────────── */
+    const handlePercent = (pct: number) => {
+        if (side === 'BUY') {
+            setAmount((usdtBalance * pct).toFixed(2))
         } else {
-            // For SELL: percentage of base asset balance
-            const maxAmount = baseBalance
-            const amount = maxAmount * percentage
-            // Determine decimal precision based on asset
-            const decimals = asset === 'BTC' || asset === 'ETH' ? 8 : 4
-            setSpotAmount(amount.toFixed(decimals))
+            const d = asset === 'BTC' || asset === 'ETH' ? 6 : 4
+            setAmount((baseBalance * pct).toFixed(d))
         }
     }
 
-    const handleSpotTrade = async () => {
-        // Pre-processing Validation
+    /* ── Spot trade ─────────────────────────────────────────────── */
+    const handleSpot = async () => {
         setMsg({ type: '', text: '' })
 
         if (!tradingEnabled) {
-            setMsg({ type: 'error', text: 'Trading is currently paused by admin.' })
+            setMsg({ type: 'error', text: 'Trading is currently paused by the administrator.' })
             return
         }
 
-        if (!spotAmount || parseFloat(spotAmount) <= 0) {
-            setMsg({ type: 'error', text: 'Please enter a valid amount' })
+        const amt = parseFloat(amount)
+        if (!amount || isNaN(amt) || amt <= 0) {
+            setMsg({ type: 'error', text: 'Please enter a valid amount.' })
             return
         }
 
-        if (orderType === 'STOP' && !triggerPrice) {
-            setMsg({ type: 'error', text: 'Please enter a trigger price' })
+        if (side === 'BUY' && calc.total > usdtBalance) {
+            setMsg({ type: 'error', text: 'Insufficient USDT balance.' })
             return
         }
-        if (orderType === 'LIMIT' && !limitPrice) {
-            setMsg({ type: 'error', text: 'Please enter a limit price' })
+        if (side === 'SELL' && amt > baseBalance) {
+            setMsg({ type: 'error', text: `Insufficient ${asset} balance.` })
             return
-        }
-        if (orderType === 'STOP_LIMIT' && (!stopPrice || !limitPrice)) {
-            setMsg({ type: 'error', text: 'Please enter both stop and limit prices' })
-            return
-        }
-
-        // Check sufficient balance before starting processing
-        if (spotSide === 'BUY') {
-            const totalWithFee = parseFloat(calculatedValues.totalWithFee)
-            if (totalWithFee > balance) {
-                setMsg({ type: 'error', text: 'Insufficient USDT balance' })
-                return
-            }
-        } else {
-            const amount = parseFloat(spotAmount)
-            if (amount > baseBalance) {
-                setMsg({ type: 'error', text: `Insufficient ${asset} balance` })
-                return
-            }
         }
 
         setLoading(true)
         try {
-            const tradeSymbol = `${asset}/USDT`
+            await spotTradeService.placeTrade({
+                symbol: `${asset}/USDT`,
+                side,
+                amount: amt,
+            })
 
-            if (orderType === 'MARKET') {
-                await spotTradeService.placeTrade({
-                    symbol: tradeSymbol,
-                    side: spotSide,
-                    amount: parseFloat(spotAmount)
-                })
-                setMsg({ type: 'success', text: 'Market order executed successfully!' })
-            } else if (orderType === 'STOP') {
-                await spotTradeService.placeStopOrder({
-                    symbol: tradeSymbol,
-                    side: spotSide,
-                    quantity: parseFloat(spotAmount),
-                    triggerPrice: parseFloat(triggerPrice)
-                })
-                setMsg({ type: 'success', text: 'Stop order placed successfully!' })
-                fetchStopOrders()
-            } else if (orderType === 'LIMIT') {
-                await spotTradeService.placeLimitOrder({
-                    symbol: tradeSymbol,
-                    side: spotSide,
-                    quantity: parseFloat(spotAmount),
-                    limitPrice: parseFloat(limitPrice)
-                })
-                setMsg({ type: 'success', text: 'Limit order placed successfully!' })
-                fetchLimitOrders()
-            } else if (orderType === 'STOP_LIMIT') {
-                await spotTradeService.placeStopLimitOrder({
-                    symbol: tradeSymbol,
-                    side: spotSide,
-                    quantity: parseFloat(spotAmount),
-                    stopPrice: parseFloat(stopPrice),
-                    limitPrice: parseFloat(limitPrice)
-                })
-                setMsg({ type: 'success', text: 'Stop-limit order placed successfully!' })
-                fetchStopLimitOrders()
-            }
+            setMsg({ type: 'success', text: `${side === 'BUY' ? 'Bought' : 'Sold'} successfully! ✓` })
+            setAmount('')
 
-            setSpotAmount('')
-            setTriggerPrice('')
-            setLimitPrice('')
-            setStopPrice('')
+            // Refresh balances
+            const balances = await walletService.getBalances()
+            const usdt = balances.find(b => b.asset === 'USDT')
+            const base = balances.find(b => b.asset === asset)
+            setUsdtBalance(usdt?.available || 0)
+            setBaseBalance(base?.available || 0)
         } catch (e: any) {
-            setMsg({ type: 'error', text: e.response?.data?.message || 'Trade failed' })
+            setMsg({ type: 'error', text: e.response?.data?.message || 'Trade failed. Please try again.' })
         } finally {
             setLoading(false)
         }
     }
 
-    const cancelStopOrder = async (id: string) => {
-        try {
-            await spotTradeService.cancelStopOrder(id)
-            setMsg({ type: 'success', text: 'Order cancelled' })
-            fetchStopOrders()
-        } catch (e: any) {
-            setMsg({ type: 'error', text: 'Failed to cancel order' })
-        }
-    }
-
-    const cancelLimitOrder = async (id: string) => {
-        try {
-            await spotTradeService.cancelLimitOrder(id)
-            setMsg({ type: 'success', text: 'Limit order cancelled' })
-            fetchLimitOrders()
-        } catch (e: any) {
-            setMsg({ type: 'error', text: 'Failed to cancel limit order' })
-        }
-    }
-
-    const cancelStopLimitOrder = async (id: string) => {
-        try {
-            await spotTradeService.cancelStopLimitOrder(id)
-            setMsg({ type: 'success', text: 'Stop-limit order cancelled' })
-            fetchStopLimitOrders()
-        } catch (e: any) {
-            setMsg({ type: 'error', text: 'Failed to cancel stop-limit order' })
-        }
-    }
-
-    const handleBinaryTrade = async () => {
+    /* ── Binary trade ───────────────────────────────────────────── */
+    const handleBinary = async () => {
         if (!binaryAmount || !binaryDirection) return
         setLoading(true)
         setMsg({ type: '', text: '' })
         try {
             await tradeService.createTrade({
-                asset: symbol,
+                asset: initialSymbol,
                 direction: binaryDirection,
                 amount: parseFloat(binaryAmount),
-                duration: binaryDuration
+                duration: binaryDuration,
             })
-            setMsg({ type: 'success', text: 'Position opened!' })
+            setMsg({ type: 'success', text: 'Position opened! ✓' })
             setBinaryAmount('')
             setBinaryDirection(null)
         } catch (e: any) {
-            setMsg({ type: 'error', text: e.response?.data?.message || 'Trade failed' })
+            setMsg({ type: 'error', text: e.response?.data?.message || 'Trade failed.' })
         } finally {
             setLoading(false)
         }
     }
 
-    // Validation
-    const isFormValid = useMemo(() => {
-        if (!spotAmount) return false
-        if (orderType === 'STOP' && !triggerPrice) return false
-        if (orderType === 'LIMIT' && !limitPrice) return false
-        if (orderType === 'STOP_LIMIT' && (!stopPrice || !limitPrice)) return false
+    const isSpotValid = useMemo(() => {
+        const amt = parseFloat(amount) || 0
+        if (amt <= 0) return false
+        if (side === 'BUY') return calc.total <= usdtBalance
+        return amt <= baseBalance
+    }, [amount, side, calc, usdtBalance, baseBalance])
 
-        // Check sufficient balance
-        if (spotSide === 'BUY') {
-            const totalWithFee = parseFloat(calculatedValues.totalWithFee)
-            return totalWithFee <= balance
-        } else {
-            const amount = parseFloat(spotAmount)
-            return amount <= baseBalance
-        }
-    }, [spotAmount, triggerPrice, limitPrice, stopPrice, orderType, spotSide, balance, baseBalance, calculatedValues])
+    const formatPrice = (p: number) =>
+        p >= 1
+            ? p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : p.toFixed(6)
 
     return (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl h-full flex flex-col">
-            {/* Tabs */}
-            <div className="flex gap-2 p-2 border-b border-gray-800 overflow-x-auto sm:overflow-visible">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+            {/* Tab bar */}
+            <div className="flex gap-1.5 p-3 border-b border-gray-800">
                 {(['spot', 'binary'] as const).map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition
-        ${activeTab === tab
-                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-black'
-                                : 'bg-gray-800 text-gray-400 hover:text-white'}
-      `}
+                        className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === tab
+                                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                                : 'bg-gray-800/60 text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                            }`}
                     >
-                        {tab === 'spot' ? 'Spot Trading' : 'Binary'}
+                        {tab === 'spot' ? 'Buy / Sell' : 'Predict'}
                     </button>
                 ))}
             </div>
 
-
-            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-                <div className="flex flex-col gap-3 mb-6">
-                    <div className="flex flex-col gap-2">
-                        <span className="text-xl sm:text-2xl font-bold text-white">
+            <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
+                {/* Pair + live price */}
+                <div className="mb-5 flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
                             {asset}/USDT
-                        </span>
-                        <span className="text-lg text-yellow-400 font-mono">
-                            ${price.toFixed(2)}
-                        </span>
+                        </p>
+                        <p className="text-2xl font-bold text-white tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                            ${formatPrice(price)}
+                        </p>
                     </div>
-
-                    <div className="text-xs text-gray-400">
-                        Balance: <span className="text-cyan-400">{balance.toFixed(2)} USDT</span>
+                    <div className="text-right text-xs text-gray-500">
+                        <p>USDT Balance</p>
+                        <p className="text-cyan-400 font-semibold text-sm tabular-nums">{usdtBalance.toFixed(2)}</p>
+                        {baseBalance > 0 && (
+                            <>
+                                <p className="mt-0.5">{asset} Balance</p>
+                                <p className="text-indigo-400 font-semibold text-sm tabular-nums">
+                                    {baseBalance.toFixed(asset === 'BTC' || asset === 'ETH' ? 6 : 4)}
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
 
-
-
+                {/* ── SPOT TAB ─────────────────────────────────────────── */}
                 {activeTab === 'spot' ? (
                     <div className="space-y-4">
-                        {/* Order Type Tabs */}
-                        <div className="grid grid-cols-2 gap-1 bg-gray-950 rounded-lg p-1 text-xs">
-                            {(['MARKET', 'LIMIT', 'STOP', 'STOP_LIMIT'] as const).map((type) => (
-                                <button
-                                    key={type}
-                                    onClick={() => setOrderType(type)}
-                                    className={`py-1.5 rounded-md font-medium transition relative ${orderType === type
-                                        ? 'bg-gray-800 text-cyan-400'
+                        {/* Buy / Sell toggle */}
+                        <div className="flex bg-gray-950 rounded-xl p-1 gap-1">
+                            <button
+                                onClick={() => { setSide('BUY'); setAmount('') }}
+                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${side === 'BUY'
+                                        ? 'bg-green-600 text-white shadow-lg shadow-green-600/30'
                                         : 'text-gray-500 hover:text-gray-300'
-                                        }`}
-                                    style={orderType === type ? {
-                                        boxShadow: '0 0 8px rgba(34, 211, 238, 0.4)',
-                                    } : {}}
-                                >
-                                    {type.replace('_', '-')}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Buy/Sell Toggle */}
-                        <div className="flex bg-gray-950 rounded-lg p-1">
-                            <button
-                                onClick={() => setSpotSide('BUY')}
-                                className={`flex-1 py-3 rounded-md font-bold transition relative ${spotSide === 'BUY'
-                                    ? 'bg-green-600 text-white'
-                                    : 'text-gray-500 hover:text-gray-300'
                                     }`}
-                                style={spotSide === 'BUY' ? {
-                                    boxShadow: '0 0 15px rgba(34, 197, 94, 0.5)',
-                                } : {}}
                             >
-                                BUY
+                                Buy {asset}
                             </button>
                             <button
-                                onClick={() => setSpotSide('SELL')}
-                                className={`flex-1 py-3 rounded-md font-bold transition relative ${spotSide === 'SELL'
-                                    ? 'bg-red-600 text-white'
-                                    : 'text-gray-500 hover:text-gray-300'
+                                onClick={() => { setSide('SELL'); setAmount('') }}
+                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${side === 'SELL'
+                                        ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                                        : 'text-gray-500 hover:text-gray-300'
                                     }`}
-                                style={spotSide === 'SELL' ? {
-                                    boxShadow: '0 0 15px rgba(239, 68, 68, 0.5)',
-                                } : {}}
                             >
-                                SELL
+                                Sell {asset}
                             </button>
                         </div>
 
-                        {/* Price Field - Auto-updates, editable for Limit/Stop-Limit, disabled for Market */}
+                        {/* Amount input */}
                         <div>
-                            <label className="text-xs text-gray-400 block mb-1">
-                                {orderType === 'MARKET' ? 'Market Price' : orderType === 'LIMIT' ? 'Limit Price' : orderType === 'STOP_LIMIT' ? 'Limit Price' : 'Price'} (USDT)
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={orderType === 'MARKET' ? price.toFixed(2) : limitPrice}
-                                    onChange={(e) => {
-                                        if (orderType === 'LIMIT' || orderType === 'STOP_LIMIT') {
-                                            setLimitPrice(e.target.value)
-                                        }
-                                    }}
-                                    disabled={orderType === 'MARKET' || orderType === 'STOP'}
-                                    className={`w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition ${orderType === 'MARKET' || orderType === 'STOP' ? 'opacity-60 cursor-not-allowed' : ''
-                                        }`}
-                                    placeholder={price.toFixed(2)}
-                                    style={{
-                                        boxShadow: (orderType === 'LIMIT' || orderType === 'STOP_LIMIT') && limitPrice
-                                            ? '0 0 8px rgba(34, 211, 238, 0.2)'
-                                            : 'none',
-                                    }}
-                                />
-                                <span className="absolute right-4 top-3 text-gray-500 text-sm">USDT</span>
-                            </div>
-                            {orderType === 'MARKET' && (
-                                <p className="text-xs text-gray-500 mt-1">Price updates automatically from market</p>
-                            )}
-                        </div>
-
-                        {/* Stop Price - Only for Stop-Limit */}
-                        {orderType === 'STOP_LIMIT' && (
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-1">Stop Price (USDT)</label>
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={stopPrice}
-                                        onChange={(e) => setStopPrice(e.target.value)}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition"
-                                        placeholder="0.00"
-                                        style={{
-                                            boxShadow: stopPrice ? '0 0 8px rgba(34, 211, 238, 0.2)' : 'none',
-                                        }}
-                                    />
-                                    <span className="absolute right-4 top-3 text-gray-500 text-sm">USDT</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Trigger Price - Only for Stop */}
-                        {orderType === 'STOP' && (
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-1">Trigger Price (USDT)</label>
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={triggerPrice}
-                                        onChange={(e) => setTriggerPrice(e.target.value)}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition"
-                                        placeholder="0.00"
-                                        style={{
-                                            boxShadow: triggerPrice ? '0 0 8px rgba(34, 211, 238, 0.2)' : 'none',
-                                        }}
-                                    />
-                                    <span className="absolute right-4 top-3 text-gray-500 text-sm">USDT</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Quantity Input */}
-                        <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <label className="text-xs text-gray-400">
-                                    {spotSide === 'BUY' ? 'Amount' : 'Quantity'} ({spotSide === 'BUY' ? 'USDT' : asset})
+                            <div className="flex justify-between items-center mb-1.5">
+                                <label className="text-xs font-medium text-gray-400">
+                                    {side === 'BUY' ? 'Amount to spend (USDT)' : `Quantity to sell (${asset})`}
                                 </label>
-                                <span className="text-xs text-gray-500">
-                                    Available: {spotSide === 'BUY' ? `${balance.toFixed(2)} USDT` : `${baseBalance.toFixed(8)} ${asset}`}
+                                <span className="text-xs text-gray-600">
+                                    Max: {side === 'BUY'
+                                        ? `$${usdtBalance.toFixed(2)}`
+                                        : `${baseBalance.toFixed(asset === 'BTC' || asset === 'ETH' ? 6 : 4)} ${asset}`}
                                 </span>
                             </div>
                             <div className="relative">
                                 <input
                                     type="number"
-                                    step={spotSide === 'BUY' ? '0.01' : '0.00000001'}
-                                    value={spotAmount}
-                                    onChange={(e) => setSpotAmount(e.target.value)}
-                                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition"
-                                    placeholder="0.00"
-                                    style={{
-                                        boxShadow: spotAmount ? '0 0 8px rgba(34, 211, 238, 0.2)' : 'none',
-                                    }}
+                                    inputMode="decimal"
+                                    value={amount}
+                                    onChange={e => setAmount(e.target.value)}
+                                    placeholder={side === 'BUY' ? '0.00' : '0.000000'}
+                                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3.5 text-white text-base font-medium focus:outline-none focus:border-cyan-500/60 transition placeholder:text-gray-700"
+                                    style={{ boxShadow: amount ? '0 0 0 1px rgba(34,211,238,0.15)' : undefined }}
                                 />
-                                <span className="absolute right-4 top-3 text-gray-500 text-sm">
-                                    {spotSide === 'BUY' ? 'USDT' : asset}
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">
+                                    {side === 'BUY' ? 'USDT' : asset}
                                 </span>
                             </div>
-                            {/* Percentage Buttons */}
+
+                            {/* Percentage quick buttons */}
                             <div className="flex gap-2 mt-2">
-                                {[25, 50, 75, 100].map((pct) => (
+                                {[25, 50, 75, 100].map(pct => (
                                     <button
                                         key={pct}
-                                        onClick={() => handlePercentageClick(pct / 100)}
-                                        className="flex-1 py-1.5 text-xs font-medium bg-gray-950 border border-gray-800 rounded-lg text-gray-400 hover:text-cyan-400 hover:border-cyan-500/50 transition"
+                                        onClick={() => handlePercent(pct / 100)}
+                                        className="flex-1 py-1.5 text-xs font-semibold bg-gray-900 border border-gray-800 rounded-lg text-gray-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-all"
                                     >
                                         {pct}%
                                     </button>
@@ -526,225 +296,189 @@ export default function TradePanel({ symbol: propSymbol, initialAsset = 'BTC' }:
                             </div>
                         </div>
 
-                        {/* Calculated Display Fields */}
-                        <div className="bg-gray-950 rounded-xl p-4 space-y-2 border border-gray-800">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-400">Total</span>
-                                <span className="text-white font-medium">{calculatedValues.total} USDT</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-400">Estimated Fee</span>
-                                <span className="text-gray-300">{calculatedValues.fee} USDT</span>
-                            </div>
-                            {spotSide === 'BUY' && (
-                                <div className="flex justify-between text-sm pt-2 border-t border-gray-800">
-                                    <span className="text-gray-400">Total Cost</span>
-                                    <span className="text-cyan-400 font-semibold">{calculatedValues.totalWithFee} USDT</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {!tradingEnabled && (
-                            <div className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
-                                <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                                Trading is currently paused by administrator.
+                        {/* Summary card */}
+                        {parseFloat(amount) > 0 && price > 0 && (
+                            <div className="bg-gray-950 border border-gray-800/80 rounded-xl p-4 space-y-2.5">
+                                {side === 'BUY' ? (
+                                    <>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">You spend</span>
+                                            <span className="text-white font-medium tabular-nums">${parseFloat(amount).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">You get ≈</span>
+                                            <span className="text-cyan-400 font-semibold tabular-nums">{calc.coinQty.toFixed(6)} {asset}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Fee (0.2%)</span>
+                                            <span className="text-gray-400 tabular-nums">${calc.fee.toFixed(4)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm pt-2 border-t border-gray-800">
+                                            <span className="text-gray-400 font-medium">Total cost</span>
+                                            <span className="text-white font-bold tabular-nums">${calc.total.toFixed(2)}</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">You sell</span>
+                                            <span className="text-white font-medium tabular-nums">{parseFloat(amount).toFixed(6)} {asset}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Market value</span>
+                                            <span className="text-white font-medium tabular-nums">${calc.total.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Fee (0.2%)</span>
+                                            <span className="text-gray-400 tabular-nums">${calc.fee.toFixed(4)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm pt-2 border-t border-gray-800">
+                                            <span className="text-gray-400 font-medium">You receive</span>
+                                            <span className="text-emerald-400 font-bold tabular-nums">{calc.displayTotal}</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
+                        {/* Trading paused banner */}
+                        {!tradingEnabled && (
+                            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold p-3 rounded-xl">
+                                <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse shrink-0" />
+                                Trading is currently paused by the administrator.
+                            </div>
+                        )}
+
+                        {/* Message */}
                         {msg.text && (
                             <div className={`p-3 rounded-xl text-sm font-medium border ${msg.type === 'success'
-                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
                                 }`}>
                                 {msg.text}
                             </div>
                         )}
 
-                        {/* Action Button */}
+                        {/* Action button */}
                         <button
-                            onClick={handleSpotTrade}
-                            disabled={loading || !isFormValid || !tradingEnabled}
-                            className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition relative disabled:opacity-50 disabled:cursor-not-allowed ${spotSide === 'BUY'
-                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400'
-                                : 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400'
+                            onClick={handleSpot}
+                            disabled={loading || !isSpotValid || !tradingEnabled}
+                            className={`w-full py-4 rounded-xl font-bold text-base text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed ${side === 'BUY'
+                                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500'
+                                    : 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500'
                                 }`}
-                            style={!loading && isFormValid && tradingEnabled ? {
-                                boxShadow: spotSide === 'BUY'
-                                    ? '0 0 20px rgba(34, 197, 94, 0.6)'
-                                    : '0 0 20px rgba(239, 68, 68, 0.6)',
-                            } : {}}
+                            style={!loading && isSpotValid && tradingEnabled ? {
+                                boxShadow: side === 'BUY'
+                                    ? '0 4px 20px rgba(34, 197, 94, 0.4)'
+                                    : '0 4px 20px rgba(239, 68, 68, 0.4)',
+                            } : undefined}
                         >
                             {loading ? (
-                                <div className="flex items-center justify-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Processing...
-                                </div>
+                                <span className="flex items-center justify-center gap-2">
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Processing…
+                                </span>
                             ) : !tradingEnabled ? (
                                 'Trading Paused'
                             ) : (
-                                `${orderType.replace('_', '-')} ${spotSide} ${asset}`
+                                `${side === 'BUY' ? 'Buy' : 'Sell'} ${asset} Now`
                             )}
                         </button>
-
-                        {/* Open Orders Section */}
-                        {(stopOrders.length > 0 || limitOrders.length > 0 || stopLimitOrders.length > 0) && (
-                            <div className="mt-6 pt-6 border-t border-gray-800">
-                                <h4 className="text-gray-400 text-sm font-semibold mb-3">Open Orders</h4>
-                                <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                                    {limitOrders.map(order => (
-                                        <div key={order.id} className="flex justify-between items-center bg-gray-950 p-3 rounded-lg text-xs border border-gray-800">
-                                            <div>
-                                                <div className="font-bold flex items-center gap-2">
-                                                    <span className="text-blue-400 text-[10px]">LIMIT</span>
-                                                    <span className={order.side === 'BUY' ? 'text-green-500' : 'text-red-500'}>
-                                                        {order.side}
-                                                    </span>
-                                                    <span className="text-white">{order.symbol}</span>
-                                                </div>
-                                                <div className="text-gray-500 mt-1">
-                                                    Limit: <span className="text-yellow-400">{parseFloat(order.limitPrice).toFixed(2)}</span>
-                                                    {' • '}
-                                                    Amt: {parseFloat(order.quantity).toFixed(4)}
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => cancelLimitOrder(order.id)}
-                                                className="text-red-400 hover:text-red-300 px-2 py-1 transition"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {stopLimitOrders.map(order => (
-                                        <div key={order.id} className="flex justify-between items-center bg-gray-950 p-3 rounded-lg text-xs border border-gray-800">
-                                            <div>
-                                                <div className="font-bold flex items-center gap-2">
-                                                    <span className="text-purple-400 text-[10px]">STOP-LIMIT</span>
-                                                    <span className={order.side === 'BUY' ? 'text-green-500' : 'text-red-500'}>
-                                                        {order.side}
-                                                    </span>
-                                                    <span className="text-white">{order.symbol}</span>
-                                                </div>
-                                                <div className="text-gray-500 mt-1">
-                                                    Stop: <span className="text-orange-400">{parseFloat(order.stopPrice).toFixed(2)}</span>
-                                                    {' • '}
-                                                    Limit: <span className="text-yellow-400">{parseFloat(order.limitPrice).toFixed(2)}</span>
-                                                    {' • '}
-                                                    Amt: {parseFloat(order.quantity).toFixed(4)}
-                                                    {order.status === 'ACTIVE' && <span className="ml-2 text-cyan-400">(Active)</span>}
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => cancelStopLimitOrder(order.id)}
-                                                className="text-red-400 hover:text-red-300 px-2 py-1 transition"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {stopOrders.map(order => (
-                                        <div key={order.id} className="flex justify-between items-center bg-gray-950 p-3 rounded-lg text-xs border border-gray-800">
-                                            <div>
-                                                <div className="font-bold flex items-center gap-2">
-                                                    <span className="text-orange-400 text-[10px]">STOP</span>
-                                                    <span className={order.side === 'BUY' ? 'text-green-500' : 'text-red-500'}>
-                                                        {order.side}
-                                                    </span>
-                                                    <span className="text-white">{order.symbol}</span>
-                                                </div>
-                                                <div className="text-gray-500 mt-1">
-                                                    Trigger: <span className="text-yellow-400">{parseFloat(order.triggerPrice).toFixed(2)}</span>
-                                                    {' • '}
-                                                    Amt: {parseFloat(order.quantity).toFixed(4)}
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => cancelStopOrder(order.id)}
-                                                className="text-red-400 hover:text-red-300 px-2 py-1 transition"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
+
                 ) : (
+                    /* ── BINARY TAB ─────────────────────────────────────────── */
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <p className="text-xs text-gray-500 text-center">
+                            Predict whether the price will go UP or DOWN within the chosen time window.
+                        </p>
+
+                        {/* Direction buttons */}
+                        <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={() => setBinaryDirection('UP')}
-                                className={`p-4 rounded-xl border-2 transition ${binaryDirection === 'UP'
-                                    ? 'border-green-500 bg-green-500/10 text-green-400'
-                                    : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
+                                className={`flex flex-col items-center gap-2 py-5 rounded-xl border-2 transition-all font-semibold ${binaryDirection === 'UP'
+                                        ? 'border-green-500 bg-green-500/10 text-green-400 shadow-lg shadow-green-600/20'
+                                        : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-green-500/30'
                                     }`}
-                                style={binaryDirection === 'UP' ? {
-                                    boxShadow: '0 0 15px rgba(34, 197, 94, 0.3)',
-                                } : {}}
                             >
-                                <ArrowUp className="w-6 h-6 mx-auto mb-2" />
-                                <div className="font-bold">CALL (UP)</div>
+                                <ArrowUpCircle className="w-8 h-8" />
+                                <span className="text-base">UP ↑</span>
                             </button>
                             <button
                                 onClick={() => setBinaryDirection('DOWN')}
-                                className={`p-4 rounded-xl border-2 transition ${binaryDirection === 'DOWN'
-                                    ? 'border-red-500 bg-red-500/10 text-red-400'
-                                    : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
+                                className={`flex flex-col items-center gap-2 py-5 rounded-xl border-2 transition-all font-semibold ${binaryDirection === 'DOWN'
+                                        ? 'border-red-500 bg-red-500/10 text-red-400 shadow-lg shadow-red-600/20'
+                                        : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-red-500/30'
                                     }`}
-                                style={binaryDirection === 'DOWN' ? {
-                                    boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)',
-                                } : {}}
                             >
-                                <ArrowDown className="w-6 h-6 mx-auto mb-2" />
-                                <div className="font-bold">PUT (DOWN)</div>
+                                <ArrowDownCircle className="w-8 h-8" />
+                                <span className="text-base">DOWN ↓</span>
                             </button>
                         </div>
 
+                        {/* Investment amount */}
                         <div>
-                            <label className="text-xs text-gray-400 block mb-1">Investment Amount</label>
-                            <input
-                                type="number"
-                                value={binaryAmount}
-                                onChange={(e) => setBinaryAmount(e.target.value)}
-                                className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition"
-                                placeholder="10.00"
-                                style={{
-                                    boxShadow: binaryAmount ? '0 0 8px rgba(168, 85, 247, 0.2)' : 'none',
-                                }}
-                            />
+                            <label className="text-xs font-medium text-gray-400 block mb-1.5">Investment Amount (USDT)</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={binaryAmount}
+                                    onChange={e => setBinaryAmount(e.target.value)}
+                                    placeholder="Enter amount…"
+                                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3.5 text-white font-medium focus:outline-none focus:border-purple-500/60 transition placeholder:text-gray-700"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500">USDT</span>
+                            </div>
                         </div>
 
+                        {/* Duration */}
                         <div>
-                            <label className="text-xs text-gray-400 block mb-1">Duration</label>
+                            <label className="text-xs font-medium text-gray-400 block mb-1.5">Duration</label>
                             <div className="flex gap-2">
-                                {[60, 180, 300].map(d => (
+                                {[
+                                    { label: '1 min', value: 60 },
+                                    { label: '3 min', value: 180 },
+                                    { label: '5 min', value: 300 },
+                                ].map(d => (
                                     <button
-                                        key={d}
-                                        onClick={() => setBinaryDuration(d)}
-                                        className={`flex-1 py-2 rounded-lg text-sm border transition ${binaryDuration === d
-                                            ? 'border-purple-500 text-purple-400 bg-purple-500/10'
-                                            : 'border-gray-800 text-gray-400 bg-gray-950'
+                                        key={d.value}
+                                        onClick={() => setBinaryDuration(d.value)}
+                                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${binaryDuration === d.value
+                                                ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                                                : 'border-gray-800 bg-gray-950 text-gray-500 hover:border-gray-700'
                                             }`}
-                                        style={binaryDuration === d ? {
-                                            boxShadow: '0 0 10px rgba(168, 85, 247, 0.3)',
-                                        } : {}}
                                     >
-                                        {d}s
+                                        {d.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
+                        {msg.text && (
+                            <div className={`p-3 rounded-xl text-sm font-medium border ${msg.type === 'success'
+                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                }`}>
+                                {msg.text}
+                            </div>
+                        )}
+
                         <button
-                            onClick={handleBinaryTrade}
+                            onClick={handleBinary}
                             disabled={loading || !binaryAmount || !binaryDirection}
-                            className="w-full py-4 rounded-xl font-bold text-white shadow-lg bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 disabled:opacity-50 transition relative"
+                            className="w-full py-4 rounded-xl font-bold text-base text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                             style={!loading && binaryAmount && binaryDirection ? {
-                                boxShadow: '0 0 20px rgba(168, 85, 247, 0.6)',
-                            } : {}}
+                                boxShadow: '0 4px 20px rgba(168, 85, 247, 0.4)',
+                            } : undefined}
                         >
-                            {loading ? 'Processing...' : 'Place Order'}
+                            {loading ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Processing…
+                                </span>
+                            ) : `Predict ${binaryDirection || '…'}`}
                         </button>
                     </div>
                 )}

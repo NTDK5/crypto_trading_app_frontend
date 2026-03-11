@@ -389,4 +389,13 @@ export const adminService = {
         const r = await api.get<{ success: boolean; data: AdminTransaction[]; pagination: Pagination }>('/admin/transactions/history', { params })
         return { data: r.data.data, pagination: r.data.pagination }
     },
+
+    // ── KYC ───────────────────────────────────────────────────────
+    async approveKyc(id: string): Promise<void> {
+        await api.post(`/admin/users/${id}/kyc/approve`)
+    },
+
+    async rejectKyc(id: string, reason: string): Promise<void> {
+        await api.post(`/admin/users/${id}/kyc/reject`, { reason })
+    },
 }

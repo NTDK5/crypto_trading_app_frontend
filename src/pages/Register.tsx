@@ -26,10 +26,8 @@ export default function Register() {
 
     try {
       await register(name, email, password)
-      // Navigate after state has been updated
-      setTimeout(() => {
-        navigate('/app/dashboard', { replace: true })
-      }, 100)
+      // ProtectedRoute will intercept and show the KYC-pending screen
+      navigate('/app/dashboard', { replace: true })
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register. Please try again.')
       setLoading(false)

@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, ChevronLeft, ChevronRight, X, DollarSign, Lock, Unlock, AlertTriangle } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, X, DollarSign, Lock, Unlock, AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { adminService, AdminUser } from '../services/adminService'
 import { StatusBadge } from '../components/admin/StatusBadge'
 
 interface ActionModal {
-    type: 'freeze-trading' | 'unfreeze-trading' | 'freeze-withdrawals' | 'unfreeze-withdrawals' | 'suspend' | 'activate' | 'reset-fund-password' | 'add-note'
+    type: 'freeze-trading' | 'unfreeze-trading' | 'freeze-withdrawals' | 'unfreeze-withdrawals' | 'suspend' | 'activate' | 'reset-fund-password' | 'add-note' | 'kyc-reject'
     userId: string
     userName: string
 }
@@ -130,6 +130,59 @@ function UserSlideOver({ user, onClose, onAction }: { user: AdminUser; onClose: 
                             {(!user.wallets || user.wallets.length === 0) && (
                                 <p className="text-slate-600 text-sm text-center py-4">No wallets found</p>
                             )}
+                        </div>
+                    </div>
+
+                    {/* KYC Section */}
+                    <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">KYC Verification</p>
+                        <div className="flex items-center justify-between px-3 py-2.5 bg-white/[0.03] border border-white/5 rounded-lg mb-3">
+                            <span className="text-xs text-gray-400">KYC Status</span>
+                            {(() => {
+                                const kyc = (user as any).kycStatus || 'UNVERIFIED'
+                                if (kyc === 'APPROVED') return <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400"><CheckCircle size={12} />Approved</span>
+                                if (kyc === 'REJECTED') return <span className="flex items-center gap-1.5 text-xs font-semibold text-red-400"><XCircle size={12} />Rejected</span>
+                                if (kyc === 'UNVERIFIED') return <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500"><XCircle size={12} />Unverified</span>
+                                return <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-400"><Clock size={12} />Pending</span>
+                            })()}
+                        </div>
+                        {(user as any).kycData && (
+                            <div className="bg-white/[0.03] border border-white/5 rounded-lg p-3 mb-3 space-y-2">
+                                <p className="text-[10px] text-gray-500 uppercase font-semibold">Submitted KYC Data</p>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="text-gray-400">Name:</div>
+                                    <div className="text-white font-medium">{(user as any).kycData.fullName}</div>
+                                    <div className="text-gray-400">DOB:</div>
+                                    <div className="text-white font-medium">{(user as any).kycData.dateOfBirth}</div>
+                                    <div className="text-gray-400">ID Type:</div>
+                                    <div className="text-white font-medium uppercase">{(user as any).kycData.idType}</div>
+                                    <div className="text-gray-400">ID No.:</div>
+                                    <div className="text-white font-medium">{(user as any).kycData.idNumber}</div>
+                                </div>
+                                {(user as any).kycSubmittedAt && (
+                                    <p className="text-[10px] text-gray-600 mt-2">Submitted: {new Date((user as any).kycSubmittedAt).toLocaleString()}</p>
+                                )}
+                            </div>
+                        )}
+                        {(user as any).kycRejectedReason && (
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-3 text-xs">
+                                <p className="text-[10px] text-red-500 font-semibold mb-1 uppercase">Rejection Reason</p>
+                                <p className="text-red-400">{(user as any).kycRejectedReason}</p>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => onAction('kyc-approve')}
+                                className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 rounded-lg transition-colors"
+                            >
+                                <CheckCircle size={12} /> Approve KYC
+                            </button>
+                            <button
+                                onClick={() => onAction('kyc-reject')}
+                                className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 rounded-lg transition-colors"
+                            >
+                                <XCircle size={12} /> Reject KYC
+                            </button>
                         </div>
                     </div>
 
@@ -280,6 +333,7 @@ export default function AdminUsers() {
             if (actionModal.type === 'suspend') await adminService.suspendUser(actionModal.userId, reasonInput)
             if (actionModal.type === 'activate') await adminService.activateUser(actionModal.userId)
             if (actionModal.type === 'reset-fund-password') await adminService.resetFundPassword(actionModal.userId)
+            if (actionModal.type === 'kyc-reject') await adminService.rejectKyc(actionModal.userId, reasonInput)
 
             showToast('Action completed successfully')
             setActionModal(null)
@@ -294,9 +348,20 @@ export default function AdminUsers() {
 
     const [showAdjustBalance, setShowAdjustBalance] = useState(false)
 
-    const handleSlideOverAction = (type: string) => {
+    const handleSlideOverAction = async (type: string) => {
         if (type === 'adjust-balance') {
             setShowAdjustBalance(true)
+        } else if (type === 'kyc-approve') {
+            if (!selectedUser) return
+            try {
+                await adminService.approveKyc(selectedUser.id)
+                showToast('KYC approved successfully')
+                const updated = await adminService.getUserDetail(selectedUser.id)
+                setSelectedUser(updated)
+                fetchUsers(pagination.page)
+            } catch (e: any) {
+                showToast(e?.response?.data?.message || 'Failed to approve KYC', 'error')
+            }
         } else {
             handleAction(type)
         }
@@ -304,7 +369,8 @@ export default function AdminUsers() {
 
     const requiresReason = actionModal?.type === 'freeze-trading' ||
         actionModal?.type === 'freeze-withdrawals' ||
-        actionModal?.type === 'suspend'
+        actionModal?.type === 'suspend' ||
+        actionModal?.type === 'kyc-reject'
 
     return (
         <div className="p-8">
@@ -348,8 +414,8 @@ export default function AdminUsers() {
                         <tr className="border-b border-white/5">
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">User</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Balance</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">KYC</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Trading</th>
-                            <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Withdrawals</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Account</th>
                             <th className="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Joined</th>
                         </tr>
@@ -398,10 +464,16 @@ export default function AdminUsers() {
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <StatusBadge status={user.flags?.tradingFrozen ? 'DISABLED' : 'ACTIVE'} dot />
+                                        {(() => {
+                                            const kyc = (user as any).kycStatus || 'UNVERIFIED'
+                                            if (kyc === 'APPROVED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5">✓ Verified</span>
+                                            if (kyc === 'REJECTED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">✗ Rejected</span>
+                                            if (kyc === 'UNVERIFIED') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 bg-gray-500/10 border border-gray-500/20 rounded px-1.5 py-0.5">✗ Unverified</span>
+                                            return <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">⏳ Pending</span>
+                                        })()}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <StatusBadge status={user.flags?.withdrawalsFrozen ? 'DISABLED' : 'ACTIVE'} dot />
+                                        <StatusBadge status={user.flags?.tradingFrozen ? 'DISABLED' : 'ACTIVE'} dot />
                                     </td>
                                     <td className="px-4 py-3">
                                         <StatusBadge status={user.isActive ? 'ACTIVE' : 'DISABLED'} dot />

@@ -19,6 +19,10 @@ export interface AuthResponse {
     email: string
     name: string
     role: string
+    kycStatus?: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED'
+    kycData?: any
+    kycSubmittedAt?: string
+    kycRejectedReason?: string | null
     isFundPasswordSet?: boolean
   }
 }
@@ -52,6 +56,11 @@ export const authService = {
 
   async getUserProfile(): Promise<AuthResponse['user']> {
     const response = await api.get<{ success: boolean; data: AuthResponse['user'] }>('/auth/profile')
+    return response.data.data
+  },
+
+  async submitKyc(kycData: any): Promise<any> {
+    const response = await api.post<{ success: boolean; data: any }>('/auth/kyc/submit', kycData)
     return response.data.data
   },
 
