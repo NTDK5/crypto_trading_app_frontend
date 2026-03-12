@@ -115,12 +115,20 @@ const WS_URL = (import.meta.env.VITE_API_URL || window.location.origin + '/api')
 
 let sharedWs: WebSocket | null = null;
 const listeners = new Set<(ev: MessageEvent) => void>();
+const activeSubscriptions = new Map<string, any>();
 
 function getSharedWs() {
   if (!sharedWs || sharedWs.readyState === WebSocket.CLOSED) {
     sharedWs = new WebSocket(WS_URL);
     sharedWs.onmessage = (ev) => {
       listeners.forEach((l) => l(ev));
+    };
+    sharedWs.onopen = () => {
+      activeSubscriptions.forEach((msg) => {
+        if (sharedWs?.readyState === WebSocket.OPEN) {
+          sharedWs.send(JSON.stringify(msg));
+        }
+      });
     };
     sharedWs.onclose = () => {
       setTimeout(() => getSharedWs(), 3000); // auto-reconnect
@@ -130,12 +138,15 @@ function getSharedWs() {
 }
 
 function sendWsMessage(msg: any) {
+  if (msg.method === 'SUBSCRIBE') {
+    activeSubscriptions.set(JSON.stringify(msg.params), msg);
+  } else if (msg.method === 'UNSUBSCRIBE') {
+    activeSubscriptions.delete(JSON.stringify(msg.params));
+  }
+
   const ws = getSharedWs();
-  const rawMsg = JSON.stringify(msg);
   if (ws.readyState === WebSocket.OPEN) {
-    ws.send(rawMsg);
-  } else {
-    ws.addEventListener('open', () => ws.send(rawMsg), { once: true });
+    ws.send(JSON.stringify(msg));
   }
 }
 
