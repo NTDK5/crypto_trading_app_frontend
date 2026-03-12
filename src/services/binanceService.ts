@@ -103,126 +103,191 @@ export const binanceService = {
   },
 }
 
-// ─── Realtime-ish helpers (polling, no Binance WS in frontend) ───────────────
-
-type BookCallback = (book: BinanceOrderBook) => void
-type KlineCallback = (candle: CandlestickData, isFinal: boolean) => void
+// ─── Realtime-ish helpers via Backend WS Proxy ───────────────
+type BookCallback = (book: BinanceOrderBook) => void;
+type KlineCallback = (candle: CandlestickData, isFinal: boolean) => void;
 
 interface WSHandle {
-  close: () => void
+  close: () => void;
 }
 
-/**
- * Subscribe to the combined mini-ticker stream for several symbols.
- * Returns a handle with a .close() method.
- *
- * @param symbols e.g. ['BTCUSDT', 'ETHUSDT']
- * @param onTicker called on every price update
- */
+const WS_URL = (import.meta.env.VITE_API_URL || window.location.origin + '/api').replace(/^http/, 'ws') + '/ws/market';
+
+let sharedWs: WebSocket | null = null;
+const listeners = new Set<(ev: MessageEvent) => void>();
+
+function getSharedWs() {
+  if (!sharedWs || sharedWs.readyState === WebSocket.CLOSED) {
+    sharedWs = new WebSocket(WS_URL);
+    sharedWs.onmessage = (ev) => {
+      listeners.forEach((l) => l(ev));
+    };
+    sharedWs.onclose = () => {
+      setTimeout(() => getSharedWs(), 3000); // auto-reconnect
+    };
+  }
+  return sharedWs;
+}
+
+function sendWsMessage(msg: any) {
+  const ws = getSharedWs();
+  const rawMsg = JSON.stringify(msg);
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(rawMsg);
+  } else {
+    ws.addEventListener('open', () => ws.send(rawMsg), { once: true });
+  }
+}
+
 export function subscribeMiniTickers(
   symbols: string[],
   onTicker: (symbol: string, price: number, changePct: number) => void,
 ): WSHandle {
-  let closed = false
-  const poll = async () => {
+  const streams = symbols.map(s => `${s.toLowerCase()}@ticker`);
+  sendWsMessage({ method: "SUBSCRIBE", params: streams, id: Date.now() });
+
+  const handler = (ev: MessageEvent) => {
     try {
-      const tickers = await binanceService.getAllTickers()
-      if (closed) return
-      const wanted = new Set(symbols.map(s => s.toUpperCase()))
-      tickers
-        .filter(t => wanted.has(t.symbol.toUpperCase()))
-        .forEach(t => onTicker(t.symbol, parseFloat(t.price), parseFloat(t.priceChangePercent || '0')))
+      const data = JSON.parse(ev.data);
+      // Data might be from bare stream or combined stream mapping
+      const streamData = data.data ? data.data : data;
+      if (streamData && streamData.e === '24hrTicker') {
+        const sym = streamData.s.toUpperCase();
+        if (symbols.map(s => s.toUpperCase()).includes(sym)) {
+          onTicker(sym, parseFloat(streamData.c), parseFloat(streamData.P));
+        }
+      }
     } catch { /* ignore */ }
-  }
-  poll()
-  const id = setInterval(poll, 1500)
+  };
+  listeners.add(handler);
+
+  // Still do an initial fetch to populate UI immediately
+  binanceService.getAllTickers().then(tickers => {
+    const wanted = new Set(symbols.map(s => s.toUpperCase()));
+    tickers
+      .filter(t => wanted.has(t.symbol.toUpperCase()))
+      .forEach(t => onTicker(t.symbol, parseFloat(t.price), parseFloat(t.priceChangePercent || '0')));
+  }).catch(() => {});
+
   return {
     close: () => {
-      closed = true
-      clearInterval(id)
+      sendWsMessage({ method: "UNSUBSCRIBE", params: streams, id: Date.now() });
+      listeners.delete(handler);
     },
-  }
+  };
 }
 
-/**
- * Subscribe to the 24 hr ticker stream for ONE symbol.
- * Fires onTicker with a full BinanceTicker object.
- */
 export function subscribeTicker(
   symbol: string,
   onTicker: (t: BinanceTicker) => void,
 ): WSHandle {
-  let closed = false
-  const poll = async () => {
+  const stream = `${symbol.toLowerCase()}@ticker`;
+  sendWsMessage({ method: "SUBSCRIBE", params: [stream], id: Date.now() });
+
+  const handler = (ev: MessageEvent) => {
     try {
-      const t = await binanceService.getTicker(symbol)
-      if (!closed) onTicker(t)
+      const data = JSON.parse(ev.data);
+      const streamData = data.data ? data.data : data;
+      if (streamData && streamData.e === '24hrTicker' && streamData.s === symbol.toUpperCase()) {
+        onTicker({
+          symbol: streamData.s,
+          price: streamData.c,
+          priceChangePercent: streamData.P,
+          highPrice: streamData.h,
+          lowPrice: streamData.l,
+          volume: streamData.v,
+          quoteVolume: streamData.q,
+        });
+      }
     } catch { /* ignore */ }
-  }
-  poll()
-  const id = setInterval(poll, 1000)
+  };
+  listeners.add(handler);
+
+  binanceService.getTicker(symbol).then(onTicker).catch(() => {});
+
   return {
     close: () => {
-      closed = true
-      clearInterval(id)
+      sendWsMessage({ method: "UNSUBSCRIBE", params: [stream], id: Date.now() });
+      listeners.delete(handler);
     },
-  }
+  };
 }
 
-/**
- * Subscribe to the order book diff stream for ONE symbol.
- * Returns a simplified book on every depth update.
- */
 export function subscribeOrderBook(
   symbol: string,
   onBook: BookCallback,
   depth = 10,
 ): WSHandle {
-  let closed = false
-  const poll = async () => {
+  // Binance provides partial book depth streams, e.g. <symbol>@depth<levels>@100ms
+  // valid levels are 5, 10, or 20.
+  const levels = depth <= 5 ? 5 : depth <= 10 ? 10 : 20;
+  const stream = `${symbol.toLowerCase()}@depth${levels}@100ms`;
+  sendWsMessage({ method: "SUBSCRIBE", params: [stream], id: Date.now() });
+
+  const handler = (ev: MessageEvent) => {
     try {
-      const book = await binanceService.getOrderBook(symbol, depth)
-      if (!closed) onBook(book)
+      const data = JSON.parse(ev.data);
+      const streamData = data.data ? data.data : data;
+      // Partial book depth returns no distinct 'e' field, but it has 'lastUpdateId' and 'bids' / 'asks'
+      // If it comes through combined streams it will have stream matching our request
+      const isDepth = data.stream === stream || (streamData.bids && streamData.asks);
+      
+      if (isDepth && streamData.bids) {
+        onBook(streamData as BinanceOrderBook);
+      }
     } catch { /* ignore */ }
-  }
-  poll()
-  const id = setInterval(poll, 1000)
+  };
+  listeners.add(handler);
+
+  // Initial fetch for fast load
+  binanceService.getOrderBook(symbol, levels).then(onBook).catch(() => {});
+
   return {
     close: () => {
-      closed = true
-      clearInterval(id)
+      sendWsMessage({ method: "UNSUBSCRIBE", params: [stream], id: Date.now() });
+      listeners.delete(handler);
     },
-  }
+  };
 }
 
-/**
- * Subscribe to the kline/candlestick stream for ONE symbol.
- * onCandle is called with the current (possibly unclosed) candle and
- * isFinal=true when the candle closes.
- */
 export function subscribeKline(
   symbol: string,
   interval: string,
   onCandle: KlineCallback,
 ): WSHandle {
-  let closed = false
-  let lastLen = 0
-  const poll = async () => {
+  const stream = `${symbol.toLowerCase()}@kline_${interval}`;
+  sendWsMessage({ method: "SUBSCRIBE", params: [stream], id: Date.now() });
+
+  const handler = (ev: MessageEvent) => {
     try {
-      const candles = await binanceService.getCandlesticks(symbol, interval, 500)
-      if (closed) return
-      if (candles.length === 0) return
-      const isFinal = candles.length !== lastLen
-      lastLen = candles.length
-      onCandle(candles[candles.length - 1], isFinal)
+      const data = JSON.parse(ev.data);
+      const streamData = data.data ? data.data : data;
+      if (streamData && streamData.e === 'kline' && streamData.s === symbol.toUpperCase() && streamData.k.i === interval) {
+        const k = streamData.k;
+        onCandle({
+          time: k.t / 1000,
+          open: parseFloat(k.o),
+          high: parseFloat(k.h),
+          low: parseFloat(k.l),
+          close: parseFloat(k.c),
+          volume: parseFloat(k.v),
+        }, k.x);
+      }
     } catch { /* ignore */ }
-  }
-  poll()
-  const id = setInterval(poll, 2500)
+  };
+  listeners.add(handler);
+
+  // Initial fetch to paint the chart
+  binanceService.getCandlesticks(symbol, interval, 500).then(candles => {
+    if (candles.length > 0) {
+      onCandle(candles[candles.length - 1], false);
+    }
+  }).catch(() => {});
+
   return {
     close: () => {
-      closed = true
-      clearInterval(id)
+      sendWsMessage({ method: "UNSUBSCRIBE", params: [stream], id: Date.now() });
+      listeners.delete(handler);
     },
-  }
+  };
 }
