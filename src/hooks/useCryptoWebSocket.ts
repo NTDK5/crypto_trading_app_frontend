@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import api from '../services/api'
+import { binanceService } from '../services/binanceService'
+import { marketService } from '../services/marketService'
 
 interface CryptoData {
   id: string
@@ -48,11 +50,37 @@ export function useCryptoWebSocket(options: UseCryptoWebSocketOptions = {}) {
       .sort((a: CryptoData, b: CryptoData) => b.total_volume - a.total_volume)
   }
 
-  // Fetch data from backend market endpoint (no direct Binance calls).
+  // Fetch data with multi-tier fallback resilient to Binance issues
   const fetchMarketData = async () => {
     try {
-      const r = await api.get<{ success: boolean; data: any[] }>('/market/tickers/24hr')
-      const mappedData = mapBinanceData(r.data.data || [])
+      let binanceData: any[] = []
+      try {
+        // 1. Try direct Binance call
+        binanceData = await binanceService.getAllTickers()
+      } catch (err) {
+        console.warn('Binance direct fetch failed, falling back to backend api /market/tickers/24hr', err)
+        try {
+          // 2. Try backend raw endpoint
+          const r = await api.get<{ success: boolean; data: any[] }>('/market/tickers/24hr')
+          binanceData = r.data.data || []
+        } catch (backendErr) {
+          console.warn('Backend /market/tickers/24hr failed, falling back to marketService.getAllMarketData()', backendErr)
+          // 3. Ultimate fallback to backend stored/mocked generic data
+          const fallbackData = await marketService.getAllMarketData()
+          binanceData = fallbackData.map(md => ({
+            symbol: `${md.asset}USDT`,
+            price: String(md.price),
+            lastPrice: String(md.price),
+            priceChangePercent: String(md.change24h),
+            highPrice: String(md.high24h),
+            lowPrice: String(md.low24h),
+            quoteVolume: String(md.volume24h),
+            volume: '0'
+          }))
+        }
+      }
+
+      const mappedData = mapBinanceData(binanceData)
       
       if (isMountedRef.current) {
         setCryptoData(mappedData)

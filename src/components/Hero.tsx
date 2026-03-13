@@ -26,7 +26,7 @@ export default function Hero() {
       {/* Content */}
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
         {/* Main Heading with Neon Effect */}
-        <h1 className="text-6xl md:text-8xl font-bold mb-6 leading-tight">
+        <h1 className="text-4xl sm:text-5xl md:text-8xl font-bold mb-6 leading-tight">
           <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 animate-gradient">
             Experience the
           </span>
@@ -44,7 +44,7 @@ export default function Hero() {
         </h1>
 
         {/* Subtitle */}
-        <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-2xl mx-auto">
+        <p className="text-base sm:text-xl md:text-2xl text-gray-300 mb-8 md:mb-10 max-w-2xl mx-auto">
           Trade, invest, and manage your digital assets with cutting-edge technology
           and unparalleled security
         </p>
@@ -53,14 +53,14 @@ export default function Hero() {
         <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
           <Link
             to="/register"
-            className="group relative px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold text-lg rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/50"
+            className="group relative px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold text-base sm:text-lg rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/50"
           >
             <span className="relative z-10">Get Started</span>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </Link>
           <Link
             to="/login"
-            className="px-8 py-4 border-2 border-cyan-500/50 text-cyan-400 font-bold text-lg rounded-lg hover:bg-cyan-500/10 hover:border-cyan-500 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/30"
+            className="px-6 py-3 sm:px-8 sm:py-4 border-2 border-cyan-500/50 text-cyan-400 font-bold text-base sm:text-lg rounded-lg hover:bg-cyan-500/10 hover:border-cyan-500 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/30"
           >
             Learn More
           </Link>
