@@ -1,4 +1,5 @@
 import api from './api'
+import { binanceService } from './binanceService'
 
 export interface MarketData {
   asset: string
@@ -25,32 +26,66 @@ const BINANCE_SYMBOLS = [
 
 export const marketService = {
   async getAllMarketData(): Promise<MarketData[]> {
-    const response = await api.get<{ success: boolean; data: any[] }>('/market')
-    const rows = response.data.data || []
-    // Backend currently returns assets like BTCUSDT (enum), normalize to UI asset codes.
-    const normalized = rows
-      .filter(r => r && r.asset)
-      .map(r => ({
-        asset: String(r.asset).replace('USDT', ''),
-        price: Number(r.price) || 0,
-        change24h: Number(r.change24h) || 0,
-        volume24h: Number(r.volume24h) || 0,
-        high24h: Number(r.high24h) || 0,
-        low24h: Number(r.low24h) || 0,
-      }))
+    try {
+      // 1. Try fetching directly from Binance first (bypassing backend Redis issues)
+      const tickers = await binanceService.getAllTickers()
+      
+      const normalized = tickers
+        .filter(t => BINANCE_SYMBOLS.includes(t.symbol.toUpperCase()))
+        .map(t => ({
+          asset: t.symbol.toUpperCase().replace('USDT', ''),
+          price: parseFloat(t.price),
+          change24h: parseFloat(t.priceChangePercent),
+          volume24h: parseFloat(t.volume),
+          high24h: parseFloat(t.highPrice),
+          low24h: parseFloat(t.lowPrice),
+        }))
 
-    // Keep symbol list stable (UI expects these)
-    return normalized.filter(r => BINANCE_SYMBOLS.includes(`${r.asset}USDT`))
+      if (normalized.length > 0) return normalized
+      throw new Error('No symbols matched from Binance')
+    } catch (err) {
+      console.warn("Binance direct fetch failed, falling back to backend...", err)
+      // 2. Fallback to backend API
+      const response = await api.get<{ success: boolean; data: any[] }>('/market')
+      const rows = response.data.data || []
+      return rows
+        .map(r => ({
+          asset: String(r.asset).replace('USDT', ''),
+          price: Number(r.price) || 0,
+          change24h: Number(r.change24h) || 0,
+          volume24h: Number(r.volume24h) || 0,
+          high24h: Number(r.high24h) || 0,
+          low24h: Number(r.low24h) || 0,
+        }))
+        .filter(r => BINANCE_SYMBOLS.includes(`${r.asset}USDT`))
+    }
   },
 
   async getPrice(asset: string): Promise<number> {
-    const response = await api.get<{ success: boolean; data: { price: number } }>(`/market/${asset}/price`)
-    return response.data.data.price
+    try {
+      const ticker = await binanceService.getTicker(`${asset}USDT`)
+      return parseFloat(ticker.price)
+    } catch {
+      const response = await api.get<{ success: boolean; data: { price: number } }>(`/market/${asset}/price`)
+      return response.data.data.price
+    }
   },
 
   async getMarketData(asset: string): Promise<MarketData> {
-    const response = await api.get<{ success: boolean; data: MarketData }>(`/market/${asset}/data`)
-    return response.data.data
+    try {
+      const ticker = await binanceService.getTicker(`${asset}USDT`)
+      return {
+        asset: asset.replace('USDT', ''),
+        price: parseFloat(ticker.price),
+        change24h: parseFloat(ticker.priceChangePercent),
+        volume24h: parseFloat(ticker.volume),
+        high24h: parseFloat(ticker.highPrice),
+        low24h: parseFloat(ticker.lowPrice),
+      }
+    } catch {
+      const response = await api.get<{ success: boolean; data: MarketData }>(`/market/${asset}/data`)
+      return response.data.data
+    }
   },
 }
 
