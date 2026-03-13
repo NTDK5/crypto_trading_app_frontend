@@ -17,6 +17,8 @@ import ErrorBoundary from '../components/ErrorBoundary'
 
 
 const TIMEFRAMES = [
+  { label: '5s', value: '5s' },
+  { label: '10s', value: '10s' },
   { label: '1m', value: '1m' },
   { label: '5m', value: '5m' },
   { label: '15m', value: '15m' },
@@ -119,16 +121,19 @@ export default function Trade() {
     }, 20)
 
     // 3. Kline stream → live candle updates
-    klineWsRef.current = subscribeKline(selectedSymbol, timeframe, (candle, isFinal) => {
+    klineWsRef.current = subscribeKline(selectedSymbol, timeframe, (candle, _isFinal) => {
       setCandlestickData(prev => {
-        if (prev.length === 0) return prev
+        if (prev.length === 0) {
+          // REST hasn't loaded yet; seed with this single live candle
+          return [candle]
+        }
         const updated = [...prev]
         const last = updated[updated.length - 1]
         if (last.time === candle.time) {
-          // Update the current unclosed candle
+          // Overwrite the in-progress (open) candle
           updated[updated.length - 1] = candle
-        } else if (isFinal) {
-          // New closed candle; append and trim to 500
+        } else if (candle.time > last.time) {
+          // New candle — append it (closed or not yet closed)
           updated.push(candle)
           if (updated.length > 500) updated.shift()
         }

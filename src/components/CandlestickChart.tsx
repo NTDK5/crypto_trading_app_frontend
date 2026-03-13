@@ -8,7 +8,7 @@ import {
   CandlestickData as ChartCandlestickData,
   LineData,
   CandlestickSeries,
-  LineSeries
+  LineSeries,
 } from 'lightweight-charts'
 import { CandlestickData } from '../services/binanceService'
 
@@ -16,38 +16,38 @@ interface CandlestickChartProps {
   data: CandlestickData[]
 }
 
-export default function CandlestickChart({ data }: CandlestickChartProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartApiRef = useRef<IChartApi | null>(null)
-  const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
-  const ma7SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
-  const ma14SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
-  const ma28SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+/** Deduplicate & sort candles by time ascending — required by lightweight-charts */
+function normalise(data: CandlestickData[]): CandlestickData[] {
+  const map = new Map<number, CandlestickData>()
+  for (const c of data) map.set(c.time, c)          // last write wins for same timestamp
+  return Array.from(map.values()).sort((a, b) => a.time - b.time)
+}
 
-  // Internal helper to calculate MA
-  const calculateMA = (candles: CandlestickData[], period: number) => {
-    const maData: LineData[] = []
-    if (candles.length < period) return maData
-
-    for (let i = period - 1; i < candles.length; i++) {
-      let sum = 0
-      for (let j = i - period + 1; j <= i; j++) {
-        sum += candles[j].close
-      }
-      maData.push({
-        time: candles[i].time as Time,
-        value: sum / period,
-      })
-    }
-    return maData
+function calculateMA(candles: CandlestickData[], period: number): LineData[] {
+  if (candles.length < period) return []
+  const result: LineData[] = []
+  for (let i = period - 1; i < candles.length; i++) {
+    let sum = 0
+    for (let j = i - period + 1; j <= i; j++) sum += candles[j].close
+    result.push({ time: candles[i].time as Time, value: sum / period })
   }
+  return result
+}
 
-  // Initialize chart
+export default function CandlestickChart({ data }: CandlestickChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const chartRef     = useRef<IChartApi | null>(null)
+  const candleRef    = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  const ma7Ref       = useRef<ISeriesApi<'Line'> | null>(null)
+  const ma14Ref      = useRef<ISeriesApi<'Line'> | null>(null)
+  const ma28Ref      = useRef<ISeriesApi<'Line'> | null>(null)
+  const prevLenRef   = useRef<number>(0)
+
+  // ── Create chart once ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!chartContainerRef.current) return
+    if (!containerRef.current) return
 
-    const container = chartContainerRef.current
-    const chart = createChart(container, {
+    const chart = createChart(containerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: '#0f172a' },
         textColor: '#9ca3af',
@@ -66,78 +66,74 @@ export default function CandlestickChart({ data }: CandlestickChartProps) {
         borderColor: '#334155',
         autoScale: true,
       },
+      crosshair: {
+        mode: 1,
+      },
     })
 
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#10b981',
-      downColor: '#ef4444',
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor:      '#10b981',
+      downColor:    '#ef4444',
       borderVisible: false,
-      wickUpColor: '#10b981',
+      wickUpColor:  '#10b981',
       wickDownColor: '#ef4444',
     })
 
-    const ma7Series = chart.addSeries(LineSeries, {
-      color: '#eab308',
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: true,
-    })
+    const ma7Series  = chart.addSeries(LineSeries, { color: '#eab308', lineWidth: 1, priceLineVisible: false, lastValueVisible: true })
+    const ma14Series = chart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 1, priceLineVisible: false, lastValueVisible: true })
+    const ma28Series = chart.addSeries(LineSeries, { color: '#a855f7', lineWidth: 1, priceLineVisible: false, lastValueVisible: true })
 
-    const ma14Series = chart.addSeries(LineSeries, {
-      color: '#3b82f6',
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: true,
-    })
-
-    const ma28Series = chart.addSeries(LineSeries, {
-      color: '#a855f7',
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: true,
-    })
-
-    chartApiRef.current = chart
-    candlestickSeriesRef.current = candlestickSeries
-    ma7SeriesRef.current = ma7Series
-    ma14SeriesRef.current = ma14Series
-    ma28SeriesRef.current = ma28Series
+    chartRef.current  = chart
+    candleRef.current = candleSeries
+    ma7Ref.current    = ma7Series
+    ma14Ref.current   = ma14Series
+    ma28Ref.current   = ma28Series
 
     return () => {
       chart.remove()
-      chartApiRef.current = null
-      candlestickSeriesRef.current = null
-      ma7SeriesRef.current = null
-      ma14SeriesRef.current = null
-      ma28SeriesRef.current = null
+      chartRef.current  = null
+      candleRef.current = null
+      ma7Ref.current    = null
+      ma14Ref.current   = null
+      ma28Ref.current   = null
+      prevLenRef.current = 0
     }
   }, [])
 
-  // Update data
+  // ── Update data whenever it changes ───────────────────────────────────────
   useEffect(() => {
-    if (!candlestickSeriesRef.current || data.length === 0) return
+    if (!candleRef.current || data.length === 0) return
 
-    const formattedData: ChartCandlestickData[] = data.map((d) => ({
-      time: d.time as Time,
-      open: d.open,
-      high: d.high,
-      low: d.low,
+    const clean = normalise(data)
+
+    const formatted: ChartCandlestickData[] = clean.map(d => ({
+      time:  d.time as Time,
+      open:  d.open,
+      high:  d.high,
+      low:   d.low,
       close: d.close,
     }))
 
-    candlestickSeriesRef.current.setData(formattedData)
+    const isLiveUpdate =
+      prevLenRef.current > 0 &&
+      (clean.length === prevLenRef.current || clean.length === prevLenRef.current + 1)
 
-    if (ma7SeriesRef.current) ma7SeriesRef.current.setData(calculateMA(data, 7))
-    if (ma14SeriesRef.current) ma14SeriesRef.current.setData(calculateMA(data, 14))
-    if (ma28SeriesRef.current) ma28SeriesRef.current.setData(calculateMA(data, 28))
-
-    // Fix content on initial load or significant data change
-    if (chartApiRef.current) {
-      chartApiRef.current.timeScale().fitContent()
+    if (isLiveUpdate) {
+      // Update only the last candle (or append one new one) — much cheaper
+      candleRef.current.update(formatted[formatted.length - 1])
+    } else {
+      // Full reload (symbol / timeframe change, initial load)
+      candleRef.current.setData(formatted)
+      chartRef.current?.timeScale().fitContent()
     }
+
+    prevLenRef.current = clean.length
+
+    // Always recalculate MAs on the full clean dataset
+    ma7Ref.current?.setData(calculateMA(clean, 7))
+    ma14Ref.current?.setData(calculateMA(clean, 14))
+    ma28Ref.current?.setData(calculateMA(clean, 28))
   }, [data])
 
-  return (
-    <div className="w-full h-full" ref={chartContainerRef} />
-  )
+  return <div className="w-full h-full" ref={containerRef} />
 }
